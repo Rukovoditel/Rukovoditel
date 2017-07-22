@@ -1,0 +1,21 @@
+.splitBox1{
+	display:none;
+}
+
+.splitBox2{
+	width: 100% !important;
+	left: 0 !important;
+}
+
+#workSpace{
+	position: static !important;
+	height: auto !important;
+}
+
+.splitElement{
+	height: auto !important;
+}
+
+.fixHead{
+	top: 0 !important;
+}

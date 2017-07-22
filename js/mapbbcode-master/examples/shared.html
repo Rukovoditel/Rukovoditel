@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../dist/lib/leaflet.css" />
+<script src="../dist/lib/leaflet.js"></script>
+
+<script src="../src/MapBBCode.js"></script>
+<script src="../src/MapBBCodeUI.js"></script>
+<script src="../src/MapBBCodeUI.Share.js"></script>
+<script src="../src/images/EditorSprites.js"></script>
+<script src="../src/controls/FunctionButton.js"></script>
+<script src="../src/controls/LetterIcon.js"></script>
+<script src="../src/controls/ExportButton.js"></script>
+<script src="../src/handlers/Handler.Text.js"></script>
+<script src="../src/handlers/Handler.Color.js"></script>
+<script src="../src/strings/English.js"></script>
+
+<p>This example test shared layers, present and missing, and default options.</p>
+<div id="test"></div>
+<div id="test2" style="margin-top: 1em;"></div>
+<script>
+L.DomEvent.on(window, 'load', function() {
+var mapBB = new MapBBCode();
+mapBB.showExternal('test', 'gkdi');
+mapBB.showExternal('test2', 'nonesuch');
+});
+</script>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="../dist/lib/leaflet.css" />
+<link rel="stylesheet" href="../dist/lib/leaflet.draw.css" />
+<script src="../dist/lib/leaflet.js"></script>
+<script src="../dist/lib/leaflet.draw.js"></script>
+
+<script src="../src/MapBBCode.js"></script>
+<script src="../src/MapBBCodeUI.js"></script>
+<script src="../src/MapBBCodeUI.Editor.js"></script>
+<script src="../src/images/EditorSprites.js"></script>
+<script src="../src/controls/FunctionButton.js"></script>
+<script src="../src/controls/LetterIcon.js"></script>
+<script src="../src/controls/PopupIcon.js"></script>
+<script src="../src/handlers/Handler.Text.js"></script>
+<script src="../src/handlers/Handler.Color.js"></script>
+<script src="../src/handlers/Handler.Length.js"></script>
+<script src="../src/handlers/Handler.Toggle.js"></script>
+<script src="../dist/lang/ru.js"></script>
+
+<p>This example tests <i>input type="text"</i> editing, Length and Toggle handlers for viewing and editing, <i>outerLinkTemplate</i> option, Russian translation.</p>
+<input type="button" value="Update" onclick="javascript:update();">
+<input type="button" value="Edit" onclick="javascript:edit();">
+<input type="text" id="code" style="width: 70%;" value="[map]60,30(OK); 60.01,30.01 60.02,30.015; 60.017,29.992 60.005,30.009(red|)[/map]">
+<div id="edit"></div>
+<div id="test"></div>
+<script>
+var mapBB = new MapBBCode({
+    defaultPosition: [59.95, 30.3],
+    defaultZoom: 13,
+    outerLinkTemplate: 'http://openstreetmap.ru/#layer=M&zoom={zoom}&lat={lat}&lon={lon}',
+	enablePolygons: false,
+    measureButton: false,
+    metric: true
+});
+var show = mapBB.show('test', document.getElementById('code').value);
+function update() {
+    show.updateBBCode(document.getElementById('code').value);
+}
+function edit() {
+    mapBB.editor('edit', document.getElementById('code'), function(res) {
+        if( res !== null )
+            update();
+    });
+}
+</script>

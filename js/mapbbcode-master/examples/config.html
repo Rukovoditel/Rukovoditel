@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="../dist/lib/leaflet.css" />
+<script src="../dist/lib/leaflet.js"></script>
+
+<script src="../src/config/MapBBCodeUI.Config.js"></script>
+<script src="../src/strings/English.Config.js"></script>
+<script src="../src/controls/FunctionButton.js"></script>
+<script src="../src/controls/StaticLayerSwitcher.js"></script>
+<script src="../src/layers/LayerList.js"></script>
+<script src="../src/layers/Esri.js"></script>
+<script src="../src/layers/Google.js"></script>
+
+<div>
+<select id="layer_select" size="1"></select>
+<input type="button" id="addbutton"/>
+<span id="key_row"><span id="key_title"></span>
+<input type="text" maxlength="80" size="40" id="key_value"></span>
+</div>
+
+<table style="border: 1px solid black; width: 99%;"><tr><td id="config">
+</td><td id="result" style="width: 200px; border-left: 1px solid black; font-family: sans-serif; font-size: 12pt;"></td></tr></table>
+
+<script>
+var config = new MapBBCodeConfig({ editorInWindow: false, layers: ['OpenStreetMap', 'CycleMap'] });
+config.on('show change', function(options) {
+    var result = '';
+    result += 'layers: ' + options.layers.join(',') + '<br>';
+    result += 'default zoom: ' + options.defaultZoom + '<br>';
+    result += 'default pos: ' + options.defaultPosition[0] + ', ' + options.defaultPosition[1] + '<br>';
+    if( !options.fullFromStart )
+        result += 'view size: ' + options.viewWidth + 'x' + options.viewHeight + '<br>';
+    else
+        result += 'view pane is full from start<br>';
+    result += 'full view height: ' + options.fullViewHeight + '<br>';
+    if( options.editorInWindow )
+        result += 'editor window size: ' + options.windowWidth + 'x' + options.windowHeight + '<br>';
+    else
+        result += 'editor panel height: ' + options.editorHeight + '<br>';
+    document.getElementById('result').innerHTML = result;
+});
+config.bindLayerAdder({
+    select: 'layer_select',
+    button: 'addbutton',
+    keyBlock: 'key_row',
+    keyTitle: 'key_title',
+    keyValue: 'key_value'
+});
+config.show('config');
+</script>

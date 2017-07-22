@@ -1,0 +1,41 @@
+div.colorPicker-picker {
+  
+  width: 34px;
+  height: 34px;
+  padding: 6px 12px;
+  padding: 0 !important;  
+  background: url(arrow.gif) no-repeat bottom right;
+  cursor: pointer;
+  line-height: 16px;
+  font-size:0.75em;
+  font-weight:bold;
+  text-align: center;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+}
+
+div.colorPicker-palette {
+  width: 110px;
+  position: absolute;    
+  padding: 2px;
+  z-index: 19999;
+  
+  background-color: #fff;
+  border: 1px solid rgba(0,0,0,0.15);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.175);
+  background-clip: padding-box;
+  border-radius: 4px;
+}
+  div.colorPicker_hexWrap {width: 100%; float:left }
+  div.colorPicker_hexWrap label {font-size: 95%; color: #2F2F2F; margin: 5px 2px; width: 25%}
+  div.colorPicker_hexWrap input {margin: 5px 2px; padding: 0; font-size: 95%; border: 1px solid #e5e5e5; width: 65%; }
+
+div.colorPicker-swatch {
+  height: 12px;
+  width: 12px;
+  border: 1px solid #000;
+  margin: 2px;
+  float: left;
+  cursor: pointer;
+  line-height: 12px;
+}
