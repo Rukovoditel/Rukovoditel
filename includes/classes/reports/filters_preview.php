@@ -14,6 +14,8 @@ class filters_preivew
   
   public $has_listing_configuration;
   
+  public $has_listing_configuration_fields;
+  
   function __construct($report_id, $include_paretn_filters = true)
   {
     $this->reports_id = $report_id;
@@ -27,6 +29,7 @@ class filters_preivew
     $this->count_filters = $this->count_filters();
     
     $this->has_listing_configuration = true;
+    $this->has_listing_configuration_fields = true;
   }
   
   function count_filters()
@@ -51,6 +54,20 @@ class filters_preivew
     
     return $count;
   }
+  
+  function get_applied_filters_name()
+  {
+  	global $app_current_users_filter;
+  	
+  	if(isset($app_current_users_filter[$this->reports_id]))
+  	{
+  		return (strlen($app_current_users_filter[$this->reports_id]) ? $app_current_users_filter[$this->reports_id] : TEXT_APPLIED_FILTERS);
+  	}
+  	else
+  	{
+  		return TEXT_APPLIED_FILTERS;
+  	}  	
+  }
       
   function render()
   {
@@ -58,7 +75,7 @@ class filters_preivew
       <div class="portlet portlet-filters-preview noprint">
       	<div class="portlet-title">
       		<div class="caption">        
-            '  . $this->render_users_filters() . ' '  . $this->render_add_button() . ' '. TEXT_APPLIED_FILTERS . ' (' . $this->count_filters . ')             
+            '  . $this->render_users_filters() . ' '  . $this->render_add_button() . ' '. $this->get_applied_filters_name() . '             
           </div>' . 
           
           ($this->has_listing_configuration ? 
@@ -88,8 +105,8 @@ class filters_preivew
 				</a>
 				<ul class="dropdown-menu pull-right">
 					<li>						
-            ' . link_to_modalbox('<i class="fa fa-sort-amount-asc"></i> ' . TEXT_HEADING_REPORTS_SORTING,url_for('reports/sorting','reports_id=' . $this->reports_id . (strlen($this->path)>0 ? '&path=' . $this->path : '') )). '
-            ' . link_to_modalbox('<i class="fa fa-wrench"></i> ' . TEXT_NAV_LISTING_CONFIG,url_for('reports/configure','reports_id=' . $this->reports_id . (strlen($this->path)>0 ? '&path=' . $this->path : '') )). '
+            ' . link_to_modalbox('<i class="fa fa-sort-amount-asc"></i> ' . TEXT_HEADING_REPORTS_SORTING,url_for('reports/sorting','reports_id=' . $this->reports_id . '&redirect_to=' . $this->redirect_to. (strlen($this->path)>0 ? '&path=' . $this->path : '') )). '
+            ' . ($this->has_listing_configuration_fields ? link_to_modalbox('<i class="fa fa-wrench"></i> ' . TEXT_NAV_LISTING_CONFIG,url_for('reports/configure','reports_id=' . $this->reports_id . '&redirect_to=' . $this->redirect_to . (strlen($this->path)>0 ? '&path=' . $this->path : '') )) : ''). '
             
 					</li>
 				</ul>
@@ -122,6 +139,10 @@ class filters_preivew
       foreach(reports::get_parent_reports($this->reports_id) as $parent_reports_id)
       {
         $report_info = db_find('app_reports',$parent_reports_id);
+        
+        //skip entities without access
+        if(!users::has_users_access_name_to_entity('view',$report_info['entities_id'])) continue;
+        
         $entity_info = db_find('app_entities',$report_info['entities_id']);
         
         $dropdown_html .= '      
@@ -146,6 +167,8 @@ class filters_preivew
     
   function render_users_filters()
   {
+  	global $app_module_path;
+  	
     $url_params = '&redirect_to=' . $this->redirect_to . '&reports_id=' . $this->reports_id . (strlen($this->path)>0 ? '&path=' . $this->path : '');
       
     $filters_html = '';
@@ -160,10 +183,15 @@ class filters_preivew
   			</li>';
     }
     
-    $filters_html .= '
-      <li>
-				<a href="' . url_for('reports/users_filters','action=use&id=default' . $url_params) . '"><i class="fa fa-angle-right"></i>' . TEXT_DEFAULT_FILTERS . '</a>
-			</li>';
+    //use defaulf filters for entities listing only
+    $report_info = db_find('app_reports',$this->reports_id);    
+    if(in_array($report_info['reports_type'],array('entity_menu','entity')))
+    {	
+	    $filters_html .= '
+	      <li>
+					<a href="' . url_for('reports/users_filters','action=use&id=default' . $url_params) . '"><i class="fa fa-angle-right"></i>' . TEXT_DEFAULT_FILTERS . '</a>
+				</li>';
+    }
               
     $filters_html .= '
       <li class="divider"></li>
@@ -239,7 +267,7 @@ class filters_preivew
       $edit_url = url_for('reports/filters_form','id=' . $v['id'] . $url_params);
       $delete_url = url_for('reports/filters','action=delete&id=' . $v['id'] . $url_params);
       
-      if(in_array($v['filters_condition'],array('empty_value','filter_by_overdue')))
+      if(in_array($v['filters_condition'],array('empty_value','not_empty_value','filter_by_overdue')))
       {
         $fitlers_values = reports::get_condition_name_by_key($v['filters_condition']);
       }
@@ -292,7 +320,7 @@ class filters_preivew
   	$templates_query = db_query("select * from app_reports_filters_templates where users_id='" . db_input($app_logged_users_id) . "' and fields_id='" . db_input($fields_id) . "'");
   	while($templates = db_fetch_array($templates_query))
   	{
-  		if(in_array($$templates['filters_condition'],array('empty_value','filter_by_overdue')))
+  		if(in_array($$templates['filters_condition'],array('empty_value','not_empty_value','filter_by_overdue')))
   		{
   			$fitlers_values = reports::get_condition_name_by_key($templates['filters_condition']);
   		}

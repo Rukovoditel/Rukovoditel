@@ -43,8 +43,12 @@ class fields_types
                  'fieldtype_date_added',
                  'fieldtype_boolean',
                  'fieldtype_dropdown',
+    						 'fieldtype_progress',
+    						 'fieldtype_autostatus',
                  'fieldtype_dropdown_multiple',                 
+    						 'fieldtype_dropdown_multilevel',
                  'fieldtype_formula',
+    						 'fieldtype_js_formula',
                  'fieldtype_input_date',
                  'fieldtype_input_datetime',
                  'fieldtype_input_numeric',
@@ -61,9 +65,21 @@ class fields_types
     return array('fieldtype_related_records',
                  'fieldtype_formula',                 
                  'fieldtype_text_pattern',
-    						 'fieldtype_qrcode',
+    						 'fieldtype_qrcode',    						 
+    						 'fieldtype_parent_value',
                  );
-  }      
+  }  
+  
+  public static function get_types_excluded_in_sorting()
+  {
+  	return array(
+  			'fieldtype_action',
+  			'fieldtype_text_pattern',
+  			'fieldtype_qrcode',
+  			'fieldtype_mapbbcode',
+  			'fieldtype_parent_value',
+  	);
+  }
   
   public static function get_types_for_filters_list()
   {
@@ -88,7 +104,12 @@ class fields_types
   public static function get_type_list_excluded_in_form()
   {
     return "'" . implode("','", fields_types::get_types_excluded_in_form())   . "',". fields_types::get_reserverd_types_list();
-  }  
+  }
+  
+  public static function get_type_list_excluded_in_sorting()
+  {
+  	return "'" . implode("','", fields_types::get_types_excluded_in_sorting())   . "'";
+  }
   
   public static function  get_reserved_filed_name_by_type($type)
   {
@@ -161,6 +182,9 @@ class fields_types
       case 'fieldtype_dropdown_multiple':
           $tooltip = TEXT_FIELDTYPE_DROPDOWN_MULTIPLE_TOOLTIP;
         break;
+      case 'fieldtype_dropdown_multilevel':
+        	$tooltip = TEXT_FIELDTYPE_DROPDOWN_MULTILEVEL_TOOLTIP;
+        	break;
       case 'fieldtype_checkboxes':
           $tooltip = TEXT_FIELDTYPE_CHECKBOXES_TOOLTIP;
         break;
@@ -200,6 +224,28 @@ class fields_types
       case 'fieldtype_qrcode':
       		$tooltip = TEXT_FIELDTYPE_QRCODE_TOOLTIP;
       		break;
+      case 'fieldtype_input_email':
+      		$tooltip = TEXT_FIELDTYPE_INPUT_EMAIL_TOOLTIP;
+      		break;
+      case 'fieldtype_section':
+      		$tooltip = TEXT_FIELDTYPE_SECTION_TOOLTIP;
+      		break;
+      case 'fieldtype_random_value':
+      		$tooltip = TEXT_FIELDTYPE_RANDOM_VALUE_TOOLTIP;
+      		break;
+      case 'fieldtype_autostatus':
+      		$tooltip = TEXT_FIELDTYPE_AUTOSTATUS_TOOLTIP;
+      		break;
+      case 'fieldtype_js_formula':
+      		$tooltip = TEXT_FIELDTYPE_JS_FORMULA_TOOLTIP;
+      		break;
+      case 'fieldtype_todo_list':
+      		$tooltip = TEXT_FIELDTYPE_TODO_LIST_TOOLTIP;
+      		break;
+      case 'fieldtype_parent_value':
+      		$tooltip = TEXT_FIELDTYPE_PARENT_VALUE_TOOLTIP;
+      		break;
+      	
     }
     
     return $tooltip;
@@ -212,9 +258,14 @@ class fields_types
     		'fieldtype_input',                                                             
     		'fieldtype_input_masked',
         'fieldtype_input_url',
-        'fieldtype_input_numeric',
-        'fieldtype_input_numeric_comments',
-        'fieldtype_formula',                                                              
+    		'fieldtype_input_email',                                                      
+    );
+    
+    $fieldtypes[TEXT_FIELDS_TYPES_GROUP_NUMERIC] = array(  
+    		'fieldtype_input_numeric',
+    		'fieldtype_input_numeric_comments',
+    		'fieldtype_formula',
+    		'fieldtype_js_formula',
     );
                                                               
     $fieldtypes[TEXT_FIELDS_TYPES_GROUP_DATES] = array(
@@ -238,6 +289,7 @@ class fields_types
     		'fieldtype_boolean',
         'fieldtype_dropdown',
         'fieldtype_dropdown_multiple',                                                      
+    		'fieldtype_dropdown_multilevel',
         'fieldtype_checkboxes',
         'fieldtype_radioboxes',
         'fieldtype_progress',                                                          		
@@ -250,10 +302,15 @@ class fields_types
                                                        
     $fieldtypes[TEXT_FIELDS_TYPES_GROUP_ENTITY] = array(
     		'fieldtype_entity',
-        'fieldtype_related_records',    		
+        'fieldtype_related_records',
+    		'fieldtype_parent_value',
     ); 
     
     $fieldtypes[TEXT_FIELDS_TYPES_GROUP_SPCEIAL_FIELDS] = array(    		
+    		'fieldtype_section',
+    		'fieldtype_random_value',
+    		'fieldtype_autostatus',
+    		'fieldtype_todo_list',
     		'fieldtype_input_vpic',
     		'fieldtype_mapbbcode',
     		'fieldtype_barcode',
@@ -331,7 +388,7 @@ class fields_types
       switch($v['type'])
       {
         case 'dropdown':
-            $field = select_tag('fields_configuration[' . $v['name'] . ']',$v['choices'],(isset($configuration[$v['name']]) ? $configuration[$v['name']] : ''), (isset($v['params']) ? $v['params']:array()));
+            $field = select_tag('fields_configuration[' . $v['name'] . ']' . (isset($v['params']['multiple']) ? '[]':''),$v['choices'],(isset($configuration[$v['name']]) ? $configuration[$v['name']] : ''), (isset($v['params']) ? $v['params']:array()));
           break;
         case 'checkbox':
             $field = '<div class="checkbox-list"><label class="checkbox-inline">' . input_checkbox_tag('fields_configuration[' . $v['name'] . ']',1,array('checked'=>(isset($configuration[$v['name']]) ? $configuration[$v['name']] : false))) . '</label></div>';
@@ -459,9 +516,13 @@ class fields_types
   {
     $fieldtype = new $class;
     
-    if(isset($fieldtype->options[$key]))
+    if($key=='name' and strlen($default)>0)
+    {	
+    	return $default;
+    }
+    elseif(isset($fieldtype->options[$key]))
     {
-      return $fieldtype->options[$key];
+      return $fieldtype->options[$key] ;
     }
     else
     {
@@ -494,6 +555,16 @@ class fields_types
   
   public static function get_types_wich_choices()
   {
-    return array('fieldtype_dropdown','fieldtype_dropdown_multiple','fieldtype_radioboxes','fieldtype_grouped_users','fieldtype_checkboxes');
-  }    
+    return array('fieldtype_dropdown','fieldtype_dropdown_multiple','fieldtype_radioboxes','fieldtype_grouped_users','fieldtype_checkboxes','fieldtype_dropdown_multilevel');
+  } 
+  
+  public static function prepare_uniquer_error_msg_param($attributes,$cfg)
+  {
+  	if($cfg->get('is_unique') and strlen($cfg->get('unique_error_msg')))
+  	{
+  		$attributes['data-unique-error-msg'] = htmlspecialchars($cfg->get('unique_error_msg'));
+  	}
+  	
+	  return $attributes;	
+  }
 }

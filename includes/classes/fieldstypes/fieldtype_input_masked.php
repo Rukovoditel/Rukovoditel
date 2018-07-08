@@ -27,6 +27,7 @@ class fieldtype_input_masked
     $cfg[] = array('title'=>TEXT_INPUT_FIELD_MASK_DEFINITIONS, 'name'=>'mask_definitions','type'=>'textarea','tooltip_icon'=>TEXT_INPUT_FIELD_MASK_DEFINITIONS_TIP_ICON,'tooltip'=>TEXT_INPUT_FIELD_MASK_DEFINITIONS_TIP,'params'=>array('class'=>'form-control'));
     
     $cfg[] = array('title'=>TEXT_IS_UNIQUE_FIELD_VALUE, 'name'=>'is_unique','type'=>'checkbox','tooltip_icon'=>TEXT_IS_UNIQUE_FIELD_VALUE_TIP);                         
+    $cfg[] = array('title'=>TEXT_ERROR_MESSAGE, 'name'=>'unique_error_msg','type'=>'input','tooltip_icon'=>TEXT_UNIQUE_FIELD_VALUE_ERROR_MSG_TIP,'tooltip'=>TEXT_DEFAULT . ': ' . TEXT_UNIQUE_FIELD_VALUE_ERROR,'params'=>array('class'=>'form-control input-xlarge'));
     
     return $cfg;
   }
@@ -40,6 +41,8 @@ class fieldtype_input_masked
                         ($field['is_required']==1 ? ' required':'') . 
                         ($cfg->get('is_unique')==1 ? ' is-unique':''),
                         );
+    
+    $attributes = fields_types::prepare_uniquer_error_msg_param($attributes,$cfg);
     
     $script = '';
     

@@ -13,9 +13,9 @@
   </div>  
   
   <div class="form-group">
-  	<label class="col-md-4 control-label" for="import_column"><?php echo tooltip_icon(TEXT_COLUMN_IMPORT_INFO) . TEXT_COLUMN ?></label>
+  	<label class="col-md-4 control-label" for="import_column"><?php echo tooltip_icon(TEXT_COLUMNS_IMPORT_INFO) . TEXT_COLUMNS_IMPORT ?></label>
     <div class="col-md-8">	
-  	  <?php echo input_tag('import_column','0',array('class'=>'form-control input-xsmall required')) ?>           
+  	  <?php echo input_tag('import_columns','1',array('class'=>'form-control input-xsmall required')) ?>           
     </div>			
   </div>  
  

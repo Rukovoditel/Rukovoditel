@@ -13,8 +13,12 @@ $common_reports_count = $common_reports['total'];
 
 <ul class="nav nav-tabs" id="form_tabs">
   <li class="active" ><a data-toggle="tab" href="#form_tab_standard_reports"><?php echo TEXT_STANDARD_REPORTS ?></a></li>
+
+<?php if(users::has_reports_access()): ?>  
+  <li><a data-toggle="tab" href="#form_tab_reports_sections"><?php echo TEXT_SECTIONS ?></a></li>
   <li><a data-toggle="tab" href="#form_tab_reports_counter"><?php echo TEXT_COUNTERS ?></a></li>
   <li><a data-toggle="tab" href="#form_tab_reports_header"><?php echo TEXT_HEADER_TOP_MENU ?></a></li>
+<?php endif ?>
   
 <?php if($common_reports_count>0): ?>  
   <li><a data-toggle="tab" href="#form_tab_common_reports"><?php echo TEXT_EXT_COMMON_REPORTS ?></a></li>
@@ -71,7 +75,11 @@ $common_reports_count = $common_reports['total'];
 
   </div>
   
-  
+  <div class="tab-pane" id="form_tab_reports_sections">
+  	<div><?php echo TEXT_CONFIGURE_DASHBOARD_SECTION_INFO ?></div><br>
+  	<div style="margin-bottom: 15px;"><bubtton type="button" class="btn btn-primary btn-add-reports-section"><?php echo TEXT_ADD_SECTION ?></bubtton></div>
+  	<div id="reports_sections_list"></div>
+  </div>
   
   <div class="tab-pane" id="form_tab_reports_counter">
   
@@ -229,8 +237,31 @@ $common_reports_count = $common_reports['total'];
 	        $.ajax({type: "POST",url: '<?php echo url_for("dashboard/","action=sort_reports_header")?>',data: data});
 	      }
 	  	});  
+
+	  	//handle sections
+	  	$('#reports_sections_list').load("<?php echo url_for('dashboard/reports','action=get_sections') ?>")
+	  	
+	  	$('.btn-add-reports-section').click(function(){
+				$('#reports_sections_list').load("<?php echo url_for('dashboard/reports','action=add_section') ?>")
+		  })		  
 	  	 
 	});  
 
+  function reports_section_delete(section_id)
+  {
+  	$('#section_panel_'+section_id).fadeOut();
+  	$.ajax({type: "POST",url: '<?php echo url_for("dashboard/reports","action=delete_section")?>',data: {section_id:section_id}});
+  }
+
+  function reports_section_edit(section_id,type,value)
+  {
+  	$.ajax({type: "POST",url: '<?php echo url_for("dashboard/reports","action=edit_section")?>',data: {section_id:section_id,type:type,value:value}}).done(function(msg){
+			if(msg.length>0)
+			{
+				alert(msg)
+				$('#'+type+'_section'+section_id).val('');
+			}
+  	});;
+  }
 	  
 </script>

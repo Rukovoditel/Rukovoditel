@@ -66,4 +66,16 @@ class fieldtype_progress
       return '';
     }
   }
+  
+  function reports_query($options)
+  {
+  	$filters = $options['filters'];
+  	$sql_query = $options['sql_query'];
+  
+  	$prefix = (strlen($options['prefix']) ? $options['prefix'] : 'e');
+  
+  	$sql_query[] = $prefix . '.field_' . $filters['fields_id'] .  ($filters['filters_condition']=='include' ? ' in ': ' not in ') .'(' . $filters['filters_values'] . ') ';
+  
+  	return $sql_query;
+  }
 }

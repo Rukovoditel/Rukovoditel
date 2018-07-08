@@ -7,6 +7,7 @@
 <thead>
   <tr>
     <th><?php echo TEXT_ACTION ?></th>
+    <th><?php echo TEXT_ID ?></th>
     <th><?php echo TEXT_REPORT_ENTITY ?></th>        
     <th width="100%"><?php echo TEXT_NAME ?></th>
     <th><?php echo TEXT_IN_MENU ?></th>
@@ -21,6 +22,7 @@
 ?>
   <tr>
     <td style="white-space: nowrap;"><?php echo button_icon_delete(url_for('reports/delete','id=' . $v['id'])) . ' ' . button_icon_edit(url_for('reports/form','id=' . $v['id'])) . ' ' . button_icon(TEXT_BUTTON_CONFIGURE_FILTERS,'fa fa-cogs',url_for('reports/filters','reports_id=' . $v['id']),false); ?></td>    
+    <td><?php echo $v['id'] ?></td>
     <td><?php echo $v['entities_name'] ?></td>
     <td><?php echo link_to($v['name'],url_for('reports/view','reports_id=' . $v['id'])) ?></td>
     <td><?php echo render_bool_value($v['in_menu']) ?></td>
@@ -28,7 +30,7 @@
     <td><?php echo render_bool_value($v['in_header']) ?></td>
   </tr>
 <?php endwhile?>
-<?php if(db_num_rows($reports_query)==0) echo '<tr><td colspan="5">' . TEXT_NO_RECORDS_FOUND . '</td></tr>';?>  
+<?php if(db_num_rows($reports_query)==0) echo '<tr><td colspan="7">' . TEXT_NO_RECORDS_FOUND . '</td></tr>';?>  
 </tbody>
 </table>
 </div>

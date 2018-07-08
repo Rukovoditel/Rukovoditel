@@ -1,5 +1,10 @@
 <?php
 
+if(!users::has_access('export_selected'))
+{
+	redirect_to('dashboard/access_forbidden');
+}
+
 
 switch($app_module_action)
 { 
@@ -72,6 +77,7 @@ switch($app_module_action)
 	case 'get_templates_button':
 		
 			$html = '';
+			$html_list = '';
 			
 			$check_query = db_query("select count(*) as total from app_items_export_templates where entities_id='" . db_input($current_entity_id) . "' and users_id='" . db_input($app_user['id']) . "'");
 			$check = db_fetch_array($check_query);
@@ -151,6 +157,150 @@ switch($app_module_action)
 			
 			exit();
 		break;
+		
+	case 'print':
+			
+		
+		if(!isset($app_selected_items[$_POST['reports_id']])) $app_selected_items[$_POST['reports_id']] = array();
+		
+		if(count($app_selected_items[$_POST['reports_id']])>0 and isset($_POST['fields']))
+		{
+			$current_entity_info = db_find('app_entities',$current_entity_id);
+		
+			$listing_fields = array();
+			$export = '					
+					<table class="table table-bordered" style="width: auto">
+						<thead>
+					';
+			$heading = array();
+		
+			//adding reserved fields
+			$fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where f.type not in ('fieldtype_action') and f.id in (" . implode(',',$_POST['fields']). ") and f.entities_id='" . db_input($current_entity_id) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
+			while($fields = db_fetch_array($fields_query))
+			{
+				if($fields['type']=='fieldtype_dropdown_multilevel')
+				{
+					$export .= fieldtype_dropdown_multilevel::output_listing_heading($fields);
+				}
+				else
+				{
+					$export .= '<th><div>' . fields_types::get_option($fields['type'],'name',$fields['name']) . '</div></th>';
+				}
+		
+				$listing_fields[] = $fields;
+			}
+		
+			//adding item url
+			if(isset($_POST['export_url']))
+			{
+				$export .= '<th><div>' . TEXT_URL_HEADING . '</div></th>';
+			}
+		
+			$export .= '
+				    </tr>
+				  </thead>
+				  <tbody>        
+				';
+			
+			//echo $export;
+			//exit();
+		
+			$selected_items = implode(',',$app_selected_items[$_POST['reports_id']]);
+		
+			//prepare forumulas query
+			$listing_sql_query_select = fieldtype_formula::prepare_query_select($current_entity_id, '');
+		
+			$listing_sql = "select e.* " . $listing_sql_query_select . " from app_entity_" . $current_entity_id . " e where e.id in (" . $selected_items . ") order by field(id," . $selected_items . ")" ;
+			$items_query = db_query($listing_sql);
+			while($item = db_fetch_array($items_query))
+			{
+				$export .= '<tr>';
+				$row = array();
+		
+				$path_info_in_report = array();
+		
+				if($current_entity_info['parent_id']>0)
+				{
+					$path_info_in_report = items::get_path_info($current_entity_id,$item['id']);
+					 
+				}
+		
+				foreach($listing_fields as $field)
+				{
+							
+					$value = items::prepare_field_value_by_type($field, $item);
+			
+					$output_options = array('class'=>$field['type'],
+							'value'=>$value,
+							'field'=>$field,
+							'item'=>$item,
+							'is_export'  => true,
+							'is_print'  => true,
+							'reports_id'=> $_POST['reports_id'],
+							'path'=> (isset($path_info_in_report['full_path']) ? $path_info_in_report['full_path']  :$current_path),
+							'path_info'   => $path_info_in_report);
+				
+					$export .= '
+							<td>' . fields_types::output($output_options) . '</td>
+							';
+					
+				}
+		
+				if(isset($_POST['export_url']))
+				{
+					$export .= '
+							<td>' .  url_for('items/info', 'path=' . (isset($path_info_in_report['full_path']) ? $path_info_in_report['full_path']  :$current_path . '-' . $item['id'])) . '</td>
+							';
+				}	
+				
+				$export .= '</tr>';				
+			}
+			
+			$export .= '
+			  </tbody>';
+												
+			$export .= '
+			    </table>					
+					';
+		
+			//echo '<pre>';
+			//print_r($export);
+			
+			$html = '
+			<!DOCTYPE html>		
+      <html lang=' . APP_LANGUAGE_SHORT_CODE  .'" dir="' . APP_LANGUAGE_TEXT_DIRECTION  . '">
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+			
+            <link href="template/plugins/font-awesome/css/font-awesome.min.css?v=4.7.0" rel="stylesheet" type="text/css"/>
+						<link href="template/plugins/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+						<link href="template/css/style-conquer.css?v=2" rel="stylesheet" type="text/css"/>
+						<link href="template/css/style.css?v=2" rel="stylesheet" type="text/css"/>
+						<link href="template/css/style-responsive.css?v=2" rel="stylesheet" type="text/css"/>
+						<link href="template/css/plugins.css" rel="stylesheet" type="text/css"/>
+						<link rel="stylesheet" type="text/css" href="css/default.css?v=' . PROJECT_VERSION . '"/>
+						<script src="template/plugins/jquery-1.10.2.min.js" type="text/javascript"></script>		
+											
+        </head>
+        <body>
+				' . $export . '
+				<script src="template/plugins/bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
+				<script>
+            window.print();
+        </script>		
+        </body>
+      </html>
+      ';
+			
+			echo $html;
+			
+			
+		}
+		
+			exit();
+		break;
+		
+		
   case 'export':
       if(!isset($app_selected_items[$_POST['reports_id']])) $app_selected_items[$_POST['reports_id']] = array();
       
@@ -166,7 +316,14 @@ switch($app_module_action)
         $fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where f.type not in ('fieldtype_action') and f.id in (" . implode(',',$_POST['fields']). ") and f.entities_id='" . db_input($current_entity_id) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
         while($fields = db_fetch_array($fields_query))
         {
-          $heading[] = fields_types::get_option($fields['type'],'name',$fields['name']);
+        	if($fields['type']=='fieldtype_dropdown_multilevel')
+        	{
+        		$heading = array_merge($heading,fieldtype_dropdown_multilevel::output_listing_heading($fields,true));
+        	}
+        	else
+        	{
+          	$heading[] = fields_types::get_option($fields['type'],'name',$fields['name']);
+        	}
           
           $listing_fields[] = $fields;
         } 
@@ -227,9 +384,23 @@ switch($app_module_action)
                                     'reports_id'=> $_POST['reports_id'],
                                     'path'=> (isset($path_info_in_report['full_path']) ? $path_info_in_report['full_path']  :$current_path),
             												'path_info'   => $path_info_in_report);
-                                    
-                                                                         
-            $row[] = trim(strip_tags(fields_types::output($output_options)));                                                                                                                        
+            
+            if($field['type']=='fieldtype_dropdown_multilevel')
+            {
+            	$row = array_merge($row,fieldtype_dropdown_multilevel::output_listing($output_options,true));
+            }
+            else
+            {    
+            	if(in_array($field['type'],array('fieldtype_textarea_wysiwyg','fieldtype_textarea')))
+            	{
+            		$row[] = trim(fields_types::output($output_options));
+            	}
+            	else
+            	{
+            		$row[] = trim(strip_tags(fields_types::output($output_options)));
+            	}
+            	
+            }
           }    
           
           if(isset($_POST['export_url']))

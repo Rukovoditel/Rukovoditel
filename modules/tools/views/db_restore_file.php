@@ -1,6 +1,6 @@
 <?php echo ajax_modal_template_header(TEXT_BUTTON_DB_RESOTRE_FROM_FILE) ?>
 
-<?php echo form_tag('restore_file_form', url_for('tools/db_backup','action=restore_file'),array('class'=>'form-horizontal','enctype'=>'multipart/form-data')) ?>
+<?php echo form_tag('restore_file_form', url_for('tools/db_restore_process','action=restore_from_file'),array('class'=>'form-horizontal','enctype'=>'multipart/form-data')) ?>
 <div class="modal-body">
   <div class="form-body">
     

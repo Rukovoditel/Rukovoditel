@@ -8,7 +8,7 @@
   <div class="form-group">
   	<label class="col-md-3 control-label" for="parent_id"><?php echo TEXT_PARENT ?></label>
     <div class="col-md-9">	
-  	  <?php echo select_tag('parent_id',global_lists::get_choices($_GET['lists_id']), (isset($_GET['parent_id']) ? $_GET['parent_id'] : $obj['parent_id']),array('class'=>'form-control input-medium')) ?>
+  	  <?php echo select_tag('parent_id',global_lists::get_choices($_GET['lists_id'],true,TEXT_TOP_LEVEL), (isset($_GET['parent_id']) ? $_GET['parent_id'] : $obj['parent_id']),array('class'=>'form-control input-large chosen-select')) ?>
       <?php echo tooltip_text(TEXT_CHOICES_PARENT_INFO); ?>
     </div>			
   </div>

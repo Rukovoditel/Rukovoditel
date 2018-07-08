@@ -37,7 +37,7 @@
   {
     $item_info = db_find('app_entity_' . $_GET['entity_id'],$_GET['id']);    
     $heading_field_id = fields::get_heading_id($_GET['entity_id']);    
-    $name = ($heading_field_id>0 ? $item_info['field_' . $heading_field_id]: $item_info['id']);
+    $name = ($heading_field_id>0 ? items::get_heading_field_value($heading_field_id,$item_info) : $item_info['id']);
             
     $heading = TEXT_HEADING_DELETE; 
     $content =  sprintf(TEXT_DEFAULT_DELETE_CONFIRMATION,$name);

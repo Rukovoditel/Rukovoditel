@@ -24,11 +24,18 @@
   </div> 
   
   <div class="form-group">
-  	<label class="col-md-4 control-label" for="is_default"><?php echo TEXT_SELECT_ENTITIES ?></label>
+  	<label class="col-md-4 control-label" for="is_default"><?php echo tooltip_icon(TEXT_SORT_ITEMS_IN_LIST) . TEXT_SELECT_ENTITIES ?></label>
     <div class="col-md-8">	
-  	  <div class="checkbox-list"><label class="checkbox-inline"><?php echo select_checkboxes_tag('entities_list',entities::get_choices(),$obj['entities_list'],array('required'=>'required')) ?></label></div>
+  	  <div class="checkbox-list"><label class="checkbox-inline"><?php echo select_tag('entities_list[]',entities::get_choices(),$obj['entities_list'],array('class'=>'form-control input-xlarge chosen-select chosen-sortable','chosen_order'=>$obj['entities_list'],'multiple'=>'multiple')) ?></label></div>
     </div>			
   </div> 
+  
+  <div class="form-group">
+  	<label class="col-md-4 control-label" for="is_default"><?php echo tooltip_icon(TEXT_SORT_ITEMS_IN_LIST) . TEXT_SELECT_REPORTS ?></label>
+    <div class="col-md-8">	
+  	  <div class="checkbox-list"><label class="checkbox-inline"><?php echo select_tag('reports_list[]',entities_menu::get_reports_choices(),$obj['reports_list'],array('class'=>'form-control input-xlarge chosen-select chosen-sortable','chosen_order'=>$obj['reports_list'],'multiple'=>'multiple')) ?></label></div>
+    </div>			
+  </div>
     
   <div class="form-group">
   	<label class="col-md-4 control-label" for="sort_order"><?php echo TEXT_SORT_ORDER ?></label>
@@ -45,8 +52,13 @@
 </form> 
 
 <script>
-  $(function() { 
-    $('#menu_form').validate();                                                                  
+  $(function() {     
+    $('#menu_form').validate({
+			submitHandler: function(form){
+				app_prepare_modal_action_loading(form)
+				form.submit();
+			}
+    });                                                                   
   });
   
 </script>   

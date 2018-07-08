@@ -21,7 +21,7 @@
   while($v = db_fetch_array($menu_query)):
 ?>
   <tr>
-    <td style="white-space: nowrap;"><?php echo button_icon_delete(url_for('entities/menu_delete','id=' . $v['id'])) . ' ' . button_icon_edit(url_for('entities/menu_form','id=' . $v['id'])) . ' ' . button_icon(TEXT_SORT,'fa fa-sort-alpha-asc',url_for('entities/menu_items_sort','id=' . $v['id'])) ?></td>    
+    <td style="white-space: nowrap;"><?php echo button_icon_delete(url_for('entities/menu_delete','id=' . $v['id'])) . ' ' . button_icon_edit(url_for('entities/menu_form','id=' . $v['id'])) ?></td>    
     <td><?php 
     	echo '<i class="fa ' . (strlen($v['icon'])>0 ? $v['icon']:'fa-list-alt'). '" aria-hidden="true"></i> <b>' . $v['name'] . '</b>';
 			
@@ -33,6 +33,12 @@
 					echo '<div style="padding-left: 19px;">- ' . $entities['name'] . '</div>';
 				}
 			}
+			
+			if(strlen($v['reports_list'])>0)
+			{
+				echo entities_menu::get_reports_list($v['reports_list']);
+			}
+			
 		
     ?></td>    
     <td><?php echo $v['sort_order'] ?></td>

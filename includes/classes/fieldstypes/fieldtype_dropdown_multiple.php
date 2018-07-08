@@ -18,8 +18,12 @@ class fieldtype_dropdown_multiple
                    'type'=>'dropdown',
                    'choices'=>array('input-small'=>TEXT_INPTUT_SMALL,'input-medium'=>TEXT_INPUT_MEDIUM,'input-large'=>TEXT_INPUT_LARGE,'input-xlarge'=>TEXT_INPUT_XLARGE),
                    'tooltip'=>TEXT_ENTER_WIDTH,
-                   'params'=>array('class'=>'form-control input-medium')); 
-                   
+                   'params'=>array('class'=>'form-control input-medium'));
+    
+    $cfg[] = array('title'=>TEXT_HIDE_FIELD_IF_EMPTY, 'name'=>'hide_field_if_empty','type'=>'checkbox','tooltip_icon'=>TEXT_HIDE_FIELD_IF_EMPTY_TIP);
+    
+    $cfg[] = array('title'=>TEXT_DISPLAY_CHOICES_VALUES, 'name'=>'display_choices_values','type'=>'checkbox','tooltip_icon'=>TEXT_DISPLAY_CHOICES_VALUES_TIP);
+    
     //cfg global list if exist
     if(count($choices = global_lists::get_lists_choices())>0)
     {              
@@ -50,13 +54,13 @@ class fieldtype_dropdown_multiple
     }
     else
     {                    
-      $choices = fields_choices::get_choices($field['id'],($field['is_required']==1 ? false:true));
+      $choices = fields_choices::get_choices($field['id'],($field['is_required']==1 ? false:true),'',$cfg->get('display_choices_values'));
       $default_id = fields_choices::get_default_id($field['id']);
     }
     
     $value = ($obj['field_' . $field['id']]>0 ? $obj['field_' . $field['id']] : ($params['form']=='comment' ? '':$default_id)); 
     
-    return select_tag('fields[' . $field['id'] . '][]',$choices,explode(',',$value),$attributes);
+    return select_tag('fields[' . $field['id'] . '][]',$choices,$value,$attributes);
   }
   
   function process($options)

@@ -2,11 +2,23 @@
 
 class items
 {
+	public static function get_info($entities_id, $items_id)
+	{
+		$item_query = db_query("select e.* " . fieldtype_formula::prepare_query_select($entities_id, '') . " from app_entity_" . $entities_id . " e where id='" . $items_id . "'");
+		$item = db_fetch_array($item_query);
+		
+		return $item;
+	}
+	
 	public static function delete($entities_id,$items_id)
 	{
+		//reset parent items
+		$item_info = db_find("app_entity_" . $entities_id,$items_id);		
+		db_query("update app_entity_" . $entities_id . "  set parent_id='" . $item_info['parent_id']. "' where parent_id='" . $items_id . "'");
+		
 		attachments::delete_attachments($entities_id,$items_id);
 		
-		db_delete_row('app_entity_' . $entities_id,$items_id);
+		db_delete_row('app_entity_' . $entities_id,$items_id);			
 		
 		comments::delete_item_comments($entities_id,$items_id);
 		
@@ -30,6 +42,13 @@ class items
 		{
 			db_query("delete from app_ext_ganttchart_depends where entities_id='" . $entities_id . "' and (item_id='" . db_input($items_id) . "' or depends_id='" . db_input($items_id) . "')");
 		}
+		
+		//delete log changes
+		if(class_exists('track_changes'))
+		{
+			track_changes::delete_log($entities_id,$items_id);
+		}
+		
 	}
 	
   public static function get_choices_by_entity($entity_id, $parent_entity_id, $add_empty = false)
@@ -81,25 +100,28 @@ class items
     return $choices;
   }
   
-  public static function get_heading_field($entity_id,$item_id)
+  public static function get_heading_field($entity_id,$item_id, $item_info = null)
   {   
     global $app_users_cache;
-         
-    $item_info = db_find('app_entity_' . $entity_id,$item_id);
-    
+                 
     if($entity_id==1)
     {
-      return $app_users_cache[$item_info['id']]['name'];
+      return (isset($app_users_cache[$item_id]) ? $app_users_cache[$item_id]['name']:'');
     }
     
     $heading_field_id = fields::get_heading_id($entity_id);
     
-    return ($heading_field_id>0 ? self::get_heading_field_value($heading_field_id,$item_info) : $item_info['id']);
+    if($heading_field_id and !$item_info)
+    {
+    	$item_info = db_find('app_entity_' . $entity_id,$item_id);
+    }
+            
+    return ($heading_field_id>0 ? self::get_heading_field_value($heading_field_id,$item_info) : $item_id);
   }
   
   public static function get_heading_field_value($heading_field_id,$item_info)
   {
-    global $app_choices_cache, $app_users_cache;
+    global $app_choices_cache, $app_users_cache, $app_heading_fields_cache;
             
     $heading_field_value = '';
     
@@ -107,18 +129,18 @@ class items
     {
       $heading_field_value = $item_info['field_' . $heading_field_id];
     }
-    
-        
-    $field_info_query = db_query("select * from app_fields where id='" . db_input($heading_field_id) . "'");
-    if($field_info = db_fetch_array($field_info_query))
-    {         
+                
+    if(isset($app_heading_fields_cache[$heading_field_id]))    
+    {     
+    	$field_info = $app_heading_fields_cache[$heading_field_id];
+    	
       if(strlen($heading_field_value)==0 and !in_array($field_info['type'],array('fieldtype_id','fieldtype_created_by','fieldtype_date_added','fieldtype_text_pattern')))
       {
         return '';
       }
             
       switch($field_info['type'])
-      {
+      {      	
         case 'fieldtype_text_pattern':                          
             $output_options = array('class'=>$field_info['type'],
                                     'value'=>'',
@@ -130,7 +152,7 @@ class items
             return fields_types::output($output_options);
           break;
         case 'fieldtype_id':
-            return $item_info['id'];
+            return (strlen($field_info['name']) ? $field_info['name'] . ': ' . $item_info['id'] : $item_info['id']);
           break;
         case 'fieldtype_created_by':
               if(isset($app_users_cache[$item_info['created_by']]))
@@ -260,15 +282,31 @@ class items
       $heading_field_id = fields::get_heading_id($entity_id);            
       
       $entitiy_name = (strlen($entity_cfg['listing_heading'])>0 ? $entity_cfg['listing_heading'] : $entity_info['name']);
-            
-      $breadcrumb[] = array('url'=>url_for('items/items','path=' . $path . $entity_id),'title'=>$entitiy_name);
+      
+      //check if user have access to entity
+      if(users::has_users_access_to_entity($entity_id))
+      {	
+      	$breadcrumb[] = array('url'=>url_for('items/items','path=' . $path . $entity_id),'title'=>$entitiy_name);
+      }
+      else
+      {
+      	$breadcrumb[] = array('title'=>$entitiy_name );
+      }
       
       if($item_id>0)
       {
         $item_info = db_find('app_entity_' . $entity_id,$item_id);
         $item_name = ($heading_field_id>0 ? self::get_heading_field_value($heading_field_id,$item_info) : $item_info['id']);
         
-        $breadcrumb[] = array('url'=>url_for('items/info','path=' . $path . $entity_id . '-' . $item_id),'title'=>$item_name);
+        //check if user have access to entity
+        if(users::has_users_access_to_entity($entity_id))
+        {
+        	$breadcrumb[] = array('url'=>url_for('items/info','path=' . $path . $entity_id . '-' . $item_id),'title'=>$item_name);
+        }
+        else
+        {
+        	$breadcrumb[] = array('title'=>$item_name);
+        }
       }
           
       $path .= $entity_id . ($item_id>0 ? '-' . $item_id . '/':'');
@@ -283,7 +321,7 @@ class items
     {
      $html .= '
         <li>
-          <a href="' . $v['url']. '">' . $v['title'] . '</a>
+          ' . (isset($v['url']) ? '<a href="' . $v['url']. '">' . $v['title'] . '</a>' : $v['title']) . '
           <i class="fa fa-angle-right"></i>
         </li>
       ';
@@ -319,9 +357,16 @@ class items
     
     if($entity_id>0)
     {        
-      $entity_cfg = entities::get_cfg($entity_id);
-                
-      $menu[] = array('title'=>(strlen($entity_cfg['window_heading'])>0 ? $entity_cfg['window_heading'] : TEXT_INFO),'url'=>url_for('items/info','path=' . implode('/',$path_to_item)),'selected_id'=>$entity_id);
+      $parent_entity_cfg = new entities_cfg($entity_id);
+      
+      if(users::has_users_access_to_entity($entity_id))
+      {	
+      	$menu[] = array('title'=>(strlen($parent_entity_cfg->get('window_heading'))>0 ? $parent_entity_cfg->get('window_heading') : TEXT_INFO),'url'=>url_for('items/info','path=' . implode('/',$path_to_item)),'selected_id'=>$entity_id);
+      }
+      else
+      {
+      	$menu[] = array('title'=>(strlen($parent_entity_cfg->get('window_heading'))>0 ? $parent_entity_cfg->get('window_heading') : TEXT_INFO));
+      }
       
       if($app_user['group_id']==0)
       {
@@ -335,7 +380,10 @@ class items
       
       while($entities = db_fetch_array($entities_query))
       {    
-        $entity_cfg = entities::get_cfg($entities['id']);
+        $entity_cfg = new entities_cfg($entities['id']);
+                
+        //skip hidden in menu
+        if($parent_entity_cfg->get('hide_subentity' . $entities['id'] . '_in_top_menu')==1) continue;
         
         $path = implode('/',$path_to_item) . '/' . $entities['id'];        
         
@@ -344,9 +392,9 @@ class items
                 
         if(users::has_access('create',users::get_entities_access_schema($entities['id'],$app_user['group_id'])))
         {
-          $s[] = array('title'=>TEXT_ADD,'url'=>url_for('items/form','path=' . $path),'modalbox'=>true);
+          $s[] = array('title'=>(strlen($entity_cfg->get('insert_button'))>0 ? $entity_cfg->get('insert_button') :TEXT_ADD),'url'=>url_for('items/form','path=' . $path),'modalbox'=>true);
         }        
-        $menu[] = array('title'=>(strlen($entity_cfg['menu_title'])>0 ? $entity_cfg['menu_title'] : $entities['name']),'url'=>url_for('items/items','path=' . $path), 'submenu'=>$s,'selected_id'=>$entities['id']);
+        $menu[] = array('title'=>(strlen($entity_cfg->get('menu_title'))>0 ? $entity_cfg->get('menu_title') : $entities['name']),'url'=>url_for('items/items','path=' . $path), 'submenu'=>$s,'selected_id'=>$entities['id']);
       }
       
       $s = array();
@@ -391,9 +439,11 @@ class items
     return $value;
   }
   
-  public static function render_info_box($entity_id,$item_id,$users_id=false)
+  public static function render_info_box($entity_id,$item_id,$users_id=false,$exclude_fields_types=true)
   {
     global $current_path, $app_user,$app_users_cache;
+    
+    $entity_cfg = new entities_cfg($entity_id);
     
     if($users_id>0)
     {
@@ -404,9 +454,8 @@ class items
     { 
       $fields_access_schema = users::get_fields_access_schema($entity_id,$app_user['group_id']);
     }
-    
-    
-    $choices_cache = fields_choices::get_cache();
+           
+    $fields_display_rules = array();
     
     $listing_sql_query_select = '';
       
@@ -422,17 +471,29 @@ class items
     /**
      * display entity fields
      */
-                
     
+    if($exclude_fields_types==true)
+    {    	
+	    $exclude_fields_types = ",'fieldtype_todo_list','fieldtype_textarea','fieldtype_textarea_wysiwyg','fieldtype_attachments','fieldtype_image','fieldtype_related_records','fieldtype_parent_item_id','fieldtype_mapbbcode'";
+    }
+    else
+    {    	
+    	$exclude_fields_types = ",'fieldtype_related_records','fieldtype_parent_item_id'";
+    }
+    
+    $hidden_fields_query = '';
+    if(strlen($entity_cfg->get('item_page_hidden_fields','')))
+    {
+    	$hidden_fields_query = " and f.id not in (" . $entity_cfg->get('item_page_hidden_fields') . ")";
+    }
+                    
     $count = 0;
     $tabs_query = db_fetch_all('app_forms_tabs',"entities_id='" . db_input($entity_id) . "' order by  sort_order, name");
     while($tabs = db_fetch_array($tabs_query))
-    {
-              
-      
+    {                    
     	$html_fields = '';
     	
-      $fields_query = db_query("select f.*, t.name as tab_name, if(f.type in ('fieldtype_id','fieldtype_date_added','fieldtype_created_by'),-1,f.sort_order) as fields_sort_order from app_fields f, app_forms_tabs t where f.type not in ('fieldtype_action','fieldtype_textarea','fieldtype_textarea_wysiwyg','fieldtype_attachments','fieldtype_image','fieldtype_related_records','fieldtype_parent_item_id','fieldtype_mapbbcode') and (f.is_heading is null or f.is_heading=0) and f.entities_id='" . db_input($entity_id) . "' and f.forms_tabs_id=t.id and f.forms_tabs_id='" . db_input($tabs['id']) . "' order by t.sort_order, t.name, fields_sort_order, f.name");
+      $fields_query = db_query("select f.*, t.name as tab_name, if(f.type in ('fieldtype_id','fieldtype_date_added','fieldtype_created_by'),-1,t.sort_order) as tab_sort_order from app_fields f, app_forms_tabs t where f.type not in ('fieldtype_action' {$exclude_fields_types} ) {$hidden_fields_query} and (f.is_heading is null or f.is_heading=0) and f.entities_id='" . db_input($entity_id) . "' and f.forms_tabs_id=t.id and f.forms_tabs_id='" . db_input($tabs['id']) . "' order by tab_sort_order, t.name, f.sort_order, f.name",false);
       while($field = db_fetch_array($fields_query))
       {            
         //check field access
@@ -448,35 +509,73 @@ class items
                             'value'=>$value,
                             'field'=>$field,
                             'item'=>$item,
-                            'users_cache' =>$app_users_cache,
                             'display_user_photo'=>true,
-                            'choices_cache'=>$choices_cache,
                             'path'=>$current_path);
                             
         $cfg = new fields_types_cfg($field['configuration']);
         
-        if($cfg->get('hide_field_if_empty')==1 and strlen($value)==0)
+        if(($cfg->get('hide_field_if_empty')==1 and strlen($value)==0) or ($cfg->get('hide_field_if_empty')==1 and in_array($field['type'],array('fieldtype_dropdown','fieldtype_radioboxes','fieldtype_created_by','fieldtype_input_date','fieldtype_input_datetime')) and $value==0))
         {
           continue;
         }
         
+        //check fields display rules
+        $check_query = db_query("select * from app_forms_fields_rules where fields_id='" . $field['id'] . "'");
+        if($check = db_fetch_array($check_query))
+        {
+        	$fields_display_rules[] = 'app_handle_forms_fields_display_rules(' . $field['id'] . ',"","' . $value . '"); ';
+        }
+				        
+        
+        $field_name = fields_types::get_option($field['type'],'name',$field['name']);
+        
+        if($field['type']=='fieldtype_section')
+        {
+        	$html_fields .='
+            <tr class="form-group-' . $field['id'] . '">
+              <th colspan="2" class="section-heading">' . $field_name . '</th>
+            </tr>
+          ';
+        }
+        elseif($field['type']=='fieldtype_dropdown_multilevel')
+        {
+        	$html_fields .= fieldtype_dropdown_multilevel::output_info_box($output_options);
+        }
         //hide field name to save space to display value
-        if($cfg->get('hide_field_name')==1)
+        elseif($cfg->get('hide_field_name')==1)
         {
           $html_fields .='
-            <tr>                          
+            <tr class="form-group-' . $field['id'] . '">                          
+              <td colspan="2">' . fields_types::output($output_options). '</td>
+            </tr>
+          ';
+        }
+        elseif($field['type']=='fieldtype_users')
+        {
+        	$html_fields .='
+            <tr class="form-group-' . $field['id'] . '">
+              <th colspan="2" ' . (strlen($field_name)>25 ? 'class="white-space-normal"':''). '>' .$field_name .'</th>
+        	  </tr>
+        	  <tr class="form-group-' . $field['id'] . '">            		
               <td colspan="2">' . fields_types::output($output_options). '</td>
             </tr>
           ';
         }
         else
-        {  
-          $field_name = fields_types::get_option($field['type'],'name',$field['name']);
-          
+        {         
+        	
+        	$field_name_html = '';
+        	
+        	//add dwonload All Attachments link if more then 1 files
+        	if($field['type']=='fieldtype_attachments' and count(explode(',',$value))>1)
+        	{
+        		$field_name_html = '<br><span class="download-all-attachments"><a style="margin-left: 0; font-weight: normal" href="' . url_for('items/info','action=download_all_attachments&id=' . $field['id'] . '&path=' . $current_path). '"><i class="fa fa-download"></i> ' . TEXT_DOWNLOAD_ALL_ATTACHMENTS . '</a></span>';
+        	}
+        	
           $html_fields .='
-            <tr>            
+            <tr class="form-group-' . $field['id'] . '">            
               <th ' . (strlen($field_name)>25 ? 'class="white-space-normal"':''). '>' . 
-              	$field_name . 
+              	$field_name . $field_name_html . 
               '</th>
               <td>' . fields_types::output($output_options). '</td>
             </tr>
@@ -496,6 +595,11 @@ class items
       }
       
       $count++;
+    }
+    
+    if(count($fields_display_rules))
+    {
+    	$html .= '<script>' . implode("\n",$fields_display_rules) . '</script>';
     }
     
     return $html;
@@ -522,7 +626,7 @@ class items
     $count = 0;
 
     $html = '';  
-    $fields_query = db_query("select f.* from app_fields f where f.type in ('fieldtype_textarea','fieldtype_textarea_wysiwyg','fieldtype_attachments','fieldtype_image','fieldtype_mapbbcode') and  f.entities_id='" . db_input($entity_id) . "' order by f.sort_order, f.name");
+    $fields_query = db_query("select f.* from app_fields f, app_forms_tabs t where f.type in ('fieldtype_todo_list','fieldtype_textarea','fieldtype_textarea_wysiwyg','fieldtype_attachments','fieldtype_image','fieldtype_mapbbcode') and  f.entities_id='" . db_input($entity_id) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
     while($field = db_fetch_array($fields_query))
     {   
       //check field access
@@ -556,7 +660,7 @@ class items
         
         $html .='
           <div class="content_box_heading"><h4 class="media-heading">' . $field['name']  . $field_name_html .  '</h4></div>
-          <div class="content_box_content">' . $value . '</div>
+          <div class="content_box_content ' . $field['type'] . '">' . $value . '</div>
         ';
       }
     }
@@ -589,11 +693,10 @@ class items
     return $fields_cache;
   }
   
-  public static function get_path_info($entities_id, $items_id)
-  {
-    $path_array = items::get_path_array($entities_id,$items_id);
-    
-    
+  public static function get_path_info($entities_id, $items_id, $current_item_info = false)
+  {    
+  	$path_array = items::get_path_array($entities_id,$items_id, array(), $current_item_info);
+        
     $path_array = array_reverse($path_array);
     
     $cout = 0;
@@ -634,13 +737,28 @@ class items
     //print_r($path_array);
   }
   
-  public static function get_path_array($entities_id, $items_id,$path_array = array())
+  public static function get_path_array($entities_id, $items_id,$path_array = array(),$current_item_info = false)
   {
-    $entities_query = db_query("select * from app_entities where id='" . $entities_id . "'");
-    $entities = db_fetch_array($entities_query);
-    
-    $items_query = db_query("select * from app_entity_" . $entities_id . " where id='" . $items_id . "'");
-    $items = db_fetch_array($items_query);
+  	global $app_entities_cache, $items_holder;
+  	    
+    $entities = $app_entities_cache[$entities_id];
+        	
+    if(!isset($items_holder[$entities_id][$items_id]))
+    {	
+    	if($current_item_info)
+    	{
+    		$items = $items_holder[$entities_id][$items_id] = $current_item_info;
+    	}
+    	else
+    	{	
+    		$items_query = db_query("select * from app_entity_" . $entities_id . " where id='" . $items_id . "'");
+    		$items = $items_holder[$entities_id][$items_id] = db_fetch_array($items_query);
+    	}
+    }
+    else 
+    {
+    	$items = $items_holder[$entities_id][$items_id];
+    }
     
     if($heading_field_id = fields::get_heading_id($entities_id))
     {      
@@ -757,11 +875,11 @@ class items
   
   public static function add_access_query_for_parent_entities($entities_id,$listing_sql_query='')
   {
-    global $app_user;
+    global $app_user, $app_entities_cache;
     
     if($app_user['group_id']==0) return '';
-    
-    $entity_info = db_find('app_entities',$entities_id);
+        
+    $entity_info  = $app_entities_cache[$entities_id];
             
     if($entity_info['parent_id']>0)
     {      
@@ -771,13 +889,50 @@ class items
     return $listing_sql_query;
   }
   
+  //check users tree access for entity 1
+  public static function add_access_query_for_user_parent_entities($entities_id,$listing_sql_query='')
+  {
+  	global $app_user, $app_entities_cache;
+  
+  	if($app_user['group_id']==0) return '';
+    	
+  	$entity_info  = $app_entities_cache[$entities_id];
+  
+  	if($entity_info['parent_id']>0)
+  	{
+  		$listing_sql_query = ' and e.parent_item_id in (select e.id from app_entity_' . $entity_info['parent_id']. ' e where '  . ($entity_info['parent_id']==1 ? 'e.id=' . $app_user['id'] :'e.id>0') . ' ' . items::add_access_query_for_user_parent_entities($entity_info['parent_id']) . ')';
+  	}
+  
+  	return $listing_sql_query;
+  }
+  
   public static function add_access_query($current_entity_id,$listing_sql_query, $force_access_query = false)
   {
-    global $app_user;
-    
-    $access_schema = users::get_entities_access_schema($current_entity_id,$app_user['group_id']);
+    global $app_user, $current_path_array;
           
-    if((users::has_access('view_assigned',$access_schema) and $app_user['group_id']>0) or $force_access_query)
+    $access_schema = users::get_entities_access_schema($current_entity_id,$app_user['group_id']);
+    
+    //get users entiteis tree
+    $users_entities_tree = entities::get_tree(1);
+    
+    //get users entities id list
+    $users_entities = array();
+    foreach($users_entities_tree as $v)
+    {
+    	$users_entities[] = $v['id'];
+    }
+        
+    //force check users entities tree access
+    if(in_array($current_entity_id,$users_entities) and users::has_access('view_assigned',$access_schema) and $app_user['group_id']>0)
+    {
+    	$listing_sql_query = self::add_access_query_for_user_parent_entities($current_entity_id);
+    	
+    	/*echo '<pre>';
+    	print_r($users_entities);
+    	print_r($listing_sql_query);
+    	exit();*/
+    }
+    elseif((users::has_access('view_assigned',$access_schema) and $app_user['group_id']>0) or $force_access_query)
     {                    
       $users_fields = array(); 
       $fields_query = db_query("select f.* from app_fields f where f.type in ('fieldtype_users') and  f.entities_id='" . db_input($current_entity_id) . "'");
@@ -793,7 +948,7 @@ class items
         $grouped_users_fields[] = $fields['id'];
       }
       
-      
+      //if exist fields then check access by fields + created_by
       if(count($users_fields)>0 or count($grouped_users_fields)>0)
       {
         $sql_query_array = array();
@@ -810,6 +965,11 @@ class items
         $sql_query_array[] = "e.created_by='" . $app_user['id'] . "'";
         
         $listing_sql_query .= " and (" . implode(' or ', $sql_query_array). ") ";
+      }
+      else
+      {
+      	//check access in created_by only 
+      	$listing_sql_query .= " and e.created_by='" . $app_user['id'] . "'";
       }
     }
     
@@ -828,8 +988,25 @@ class items
     }       
     //if exist haeading field then order by heading  
     elseif($heading_id = fields::get_heading_id($entities_id))
-    {      
-      $listing_order_query .= "{$alias}.field_{$heading_id} " . $order_cause;
+    { 
+    	$field_info = db_find('app_fields',$heading_id);
+    	
+    	switch($field_info['type'])
+    	{
+    		case 'fieldtype_id':
+    			$listing_order_query .= "{$alias}.id"  . ' ' . $order_cause;
+    			break;
+    		case 'fieldtype_date_added':
+    			$listing_order_query .= "{$alias}.date_added"  . ' ' . $order_cause;
+    			break;
+    		case 'fieldtype_created_by':
+    			$listing_order_query .= "{$alias}.created_by"  . ' ' . $order_cause;
+    			break;
+    		default:
+    			$listing_order_query .= "{$alias}.field_{$heading_id} " . $order_cause;
+    			break;
+    	}
+      
     }
     //default order by ID
     else
@@ -838,6 +1015,141 @@ class items
     }
     
     return $listing_order_query;
+  }
+  
+  public static function check_unique($entities_id,$fields_id,$fields_value,$items_id = false)
+  {  	
+  	$field_info = db_find('app_fields',$fields_id);
+  		
+  	switch($field_info['type'])
+  	{
+  		case 'fieldtype_input_date':
+  			$fields_value = get_date_timestamp($fields_value);
+  			break;
+  	}
+  		
+  	$check_query = db_query("select count(*) as total from app_entity_" . $entities_id .  " where field_" . $field_info['id'] . "='" . db_input($fields_value)  . "'" . ($items_id ? " and id!='" . db_input($items_id) . "'":""));
+  	$check = db_fetch_array($check_query);
+  		
+  	return (int)$check['total'];
+  }
+  
+  public static function get_send_to($entity_id, $item_id, $item=false)
+  {
+  	
+  	if(!$item)
+  	{
+  		$item = db_find('app_entity_' . $entity_id,$item_id);
+  	}
+  	
+  	//start build $send_to array
+  	$send_to = array();
+  	
+  	//add assigned users to notification
+  	$fields_query = db_query("select f.* from app_fields f where f.type in ('fieldtype_grouped_users','fieldtype_users') and  f.entities_id='" . db_input($entity_id) . "' ");
+  	while($field = db_fetch_array($fields_query))
+  	{
+  		$cfg = new fields_types_cfg($field['configuration']);
+  		 
+  		//skip fields with disabled notification
+  		if($cfg->get('disable_notification')==1) continue;
+  		 
+  		$field_value = $item['field_' . $field['id']];
+  		 
+  		switch($field['type'])
+  		{
+  			case 'fieldtype_grouped_users':
+  				if(strlen($field_value)>0)
+  				{
+  					foreach(explode(',',$field_value) as $choices_id)
+  					{
+  						$choice_query = db_query("select * from app_fields_choices where id='" . db_input($choices_id) . "'");
+  						if($choice = db_fetch_array($choice_query))
+  						{
+  							foreach(explode(',',$choice['users']) as $id)
+  							{
+  								$send_to[] = $id;
+  							}
+  						}
+  					}
+  				}
+  				break;
+  			case 'fieldtype_users':
+  				if(strlen($field_value)>0)
+  				{
+  					$send_to = array_merge($send_to,explode(',',$field_value));
+  				}
+  				break;
+  		}
+  	}
+  	
+  	$send_to = array_filter($send_to);
+  	
+  	return $send_to;
+  }
+  
+  public static function send_new_item_nofitication($current_entity_id, $item_id, $app_send_to = false)
+  {
+  	
+  	if(!$app_send_to)
+  	{
+  		$app_send_to = items::get_send_to($current_entity_id, $item_id);
+  	}
+  	  	
+  	//sending sms
+  	$modules = new modules('sms');
+  	$sms = new sms($current_entity_id, $item_id);
+  	$sms->send_to = $app_send_to;
+  	$sms->send_insert_msg();
+  	
+  	
+  	$breadcrumb = items::get_breadcrumb_by_item_id($current_entity_id, $item_id);
+  	$item_name = $breadcrumb['text'];
+  	
+  	$entity_cfg = new entities_cfg($current_entity_id);
+  	
+  	//subject for new item
+  	$subject = (strlen($entity_cfg->get('email_subject_new_item'))>0 ? $entity_cfg->get('email_subject_new_item') . ' ' . $item_name : TEXT_DEFAULT_EMAIL_SUBJECT_NEW_ITEM . ' ' . $item_name);
+  		
+  	 
+  	//Send notification if there are assigned users and items is new or there is changed fields or new assigned users
+  	if(count($app_send_to)>0)
+  	{
+  		$users_notifications_type = 'new_item';
+  			
+  		//default email heading
+  		$heading = users::use_email_pattern_style('<div><a href="' . url_for('items/info','path=' . $current_entity_id . '-' . $item_id,true) . '"><h3>' . $subject . '</h3></a></div>','email_heading_content');
+  	
+  		//start sending email
+  		foreach(array_unique($app_send_to) as $send_to)
+  		{
+  			//prepare body
+  			//prepare body
+  			if($entity_cfg->get('item_page_details_columns','2')==1)
+  			{
+  				$body = users::use_email_pattern('single_column',array('email_single_column'=>items::render_info_box($current_entity_id,$item_id,$send_to, false)));
+  			}
+  			else
+  			{
+  				$body = users::use_email_pattern('single',array('email_body_content'=>items::render_content_box($current_entity_id,$item_id,$send_to),'email_sidebar_content'=>items::render_info_box($current_entity_id,$item_id,$send_to)));
+  			}
+  	
+  			//echo $subject . $body;
+  			//exit();
+  	
+  	
+  			if(users_cfg::get_value_by_users_id($send_to, 'disable_notification')!=1)
+  			{
+  				users::send_to(array($send_to),$subject,$heading . $body);
+  			}
+  				
+  			//add users notification
+  			users_notifications::add($subject, $users_notifications_type, $send_to, $current_entity_id, $item_id);
+  	
+  		}
+  	}
+  	
+  	return $subject;  	
   }
     
   

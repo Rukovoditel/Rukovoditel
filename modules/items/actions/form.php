@@ -27,6 +27,12 @@ else
   {
     require(component_path('items/items_form_calendar_report_prepare'));
   }
+  
+//prepare start/end dates if add item from gantt report
+  if(strstr($app_redirect_to,'ganttreport'))
+  {
+  	require(component_path('items/items_form_gantt_report_prepare'));
+  }  
 }
 
 $entity_cfg = entities::get_cfg($current_entity_id);

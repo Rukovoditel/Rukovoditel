@@ -9,7 +9,9 @@
   switch($app_module_action)
   {
     case 'restore':    
-    	
+     	  //chck form token
+    	  app_check_form_token('users/restore_password');
+    	  
 	    	if(app_recaptcha::is_enabled())
 	    	{
 	    		if(!app_recaptcha::verify())

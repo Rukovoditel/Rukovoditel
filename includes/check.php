@@ -18,8 +18,13 @@
   	$error_list[] = "PHP mbstring extension is NOT installed on your web server";
   }
   
+//check mbstring
+  if (!extension_loaded('xmlwriter')) {
+  	$error_list[] = "PHP XMLWriter extension is NOT installed on your web server";
+  }  
+  
 //check folder
-  $check_folders = array('config','backups','log','tmp','uploads','uploads/attachments','uploads/users');
+  $check_folders = array('config','backups','log','tmp','uploads','uploads/attachments','uploads/users','cache');
   
   foreach($check_folders as $v)
   {
@@ -36,24 +41,6 @@
     }
   }
 
-//check user privileges  
-  $user_privileges_list = array();
-  $user_privileges_query = db_query("SHOW PRIVILEGES");
-  while($user_privileges = db_fetch_array($user_privileges_query))
-  {
-    $user_privileges_list[] = $user_privileges['Privilege'];
-  }
-      
-  $required_privileges = array('Select','Insert','Update','Delete','Create','Drop','Alter');
-  
-  foreach($required_privileges as $v)
-  {
-    if(!in_array($v,$user_privileges_list))
-    {
-      $error_list[] = 'Error: "' . $v . '" privilege for mysql user is required. Please update privileges for user "' . DB_SERVER_USERNAME . '"';
-    }
-  }
-    
 //dispaly errors if exist  
   if(count($error_list))
   {

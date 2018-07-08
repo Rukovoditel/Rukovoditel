@@ -1,6 +1,6 @@
 <?php echo ajax_modal_template_header(TEXT_WARNING) ?>
 
-<?php echo form_tag('backup', url_for('tools/db_backup','action=restore&id=' . $_GET['id'])); ?> 
+<?php echo form_tag('backup', url_for('tools/db_restore_process','action=restore_by_id&id=' . $_GET['id'])); ?> 
 
 <div class="modal-body">    
 <?php 

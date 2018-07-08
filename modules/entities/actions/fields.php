@@ -11,6 +11,10 @@ switch($app_module_action)
        
        exit(); 
     break;
+   case 'set_heading_field_width':
+    	entities::set_cfg('heading_width_based_content',$_POST['heading_width_based_content'],$_GET['entities_id']);
+    	exit();
+    	break;
   case 'set_number_fixed_field_in_listing':
       entities::set_cfg('number_fixed_field_in_listing',$_POST['number_fields'],$_GET['entities_id']);
       exit(); 
@@ -37,6 +41,27 @@ switch($app_module_action)
         }
       exit();
     break;
+  case 'save_internal':
+	  	$sql_data = array(
+	  			'name'=>$_POST['name'],	  			
+	  			'short_name'=>$_POST['short_name'],	  			
+	  			'is_heading'=>(isset($_POST['is_heading']) ? $_POST['is_heading']:0),
+	  			'sort_order'=>$_POST['sort_order'],
+	  			);
+	  		  	
+	  	//reset heading fields, only one field can be heading
+	  	if(isset($_POST['is_heading']))
+	  	{
+	  		db_query("update app_fields set is_heading=0 where entities_id ='" . db_input($_POST['entities_id']) . "'");
+	  	}
+	  	
+	  	if(isset($_GET['id']))
+	  	{	  	
+	  		db_perform('app_fields',$sql_data,'update',"id='" . db_input($_GET['id']) . "'");	  
+	  	}
+	  	
+	  	redirect_to('entities/fields','entities_id=' . $_POST['entities_id']);
+  	break;
   case 'save':
       $sql_data = array('forms_tabs_id'=>$_POST['forms_tabs_id'],
                         'name'=>$_POST['name'],                        
@@ -115,6 +140,12 @@ switch($app_module_action)
           
           db_query("delete from app_reports_filters_templates where fields_id='" . db_input($_GET['id']) ."'");
           
+          db_query("delete from app_forms_fields_rules where fields_id='" . db_input($_GET['id']) ."'");
+          
+          //access rules
+          db_query("delete from app_access_rules where fields_id='" . db_input($_GET['id']) ."'");
+          db_query("delete from app_access_rules_fields where fields_id='" . db_input($_GET['id']) ."'");
+          
           $alerts->add(sprintf(TEXT_WARN_DELETE_SUCCESS,$name),'success');
         }
         
@@ -153,7 +184,26 @@ switch($app_module_action)
       echo $html;
       
       exit();
-    break;  
+    break; 
+  case 'mulitple_edit':
+  	if(strlen($_POST['selected_fields']))
+  	{
+  		$fields_query = db_query("select * from app_fields where entities_id='" . $_GET['entities_id'] . "' and id in (" . $_POST['selected_fields'] . ")");
+  		while($fields = db_fetch_array($fields_query))
+  		{
+  			if($_POST['is_required']=='yes')
+  			{
+  				db_query("update app_fields set is_required=1 where id='" . $fields['id'] . "'");
+  			}
+  			elseif($_POST['is_required']=='no')
+  			{
+  				db_query("update app_fields set is_required=0 where id='" . $fields['id'] . "'");
+  			}
+  		}
+  	}
+  	
+  	redirect_to('entities/fields','entities_id=' . $_GET['entities_id']);
+  	break;
   case 'copy_selected':  
     if(strlen($_POST['selected_fields'])>0 and $_POST['copy_to_entities_id']>0)
     {
@@ -171,7 +221,7 @@ switch($app_module_action)
         db_perform('app_fields',$sql_data);        
         $new_fields_id = db_insert_id();
         
-        entities::prepare_field($_POST['copy_to_entities_id'],$new_fields_id);
+        entities::prepare_field($_POST['copy_to_entities_id'],$new_fields_id, $fields['type']);
         
         //create app_related_items_#_# table
         related_records::prepare_entities_related_items_table($_POST['copy_to_entities_id'], $new_fields_id);

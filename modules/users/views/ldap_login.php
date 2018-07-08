@@ -1,5 +1,6 @@
 <h3 class="form-title"><?php echo TEXT_HEADING_LDAP_LOGIN ?></h3>
 
+<?php echo (strlen(CFG_LOGIN_PAGE_CONTENT)>0 ? '<p>' . nl2br(CFG_LOGIN_PAGE_CONTENT) . '</p>':'') ?>
 
 <?php if(access_groups::get_ldap_default_group_id()){ ?>
 
@@ -28,7 +29,10 @@
 <?php endif ?>
 
 <div class="form-actions">
+<?php if(CFG_USE_LDAP_LOGIN_ONLY!=1): ?>
 	<button type="button" id="back-btn" class="btn btn-default" onClick="location.href='<?php echo url_for('users/login')?>'"><i class="fa fa-arrow-circle-left"></i> </button>
+<?php endif ?>
+	
 	<button type="submit" class="btn btn-info pull-right"><?php echo TEXT_BUTTON_LOGIN ?></button>
 </div>
 

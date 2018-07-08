@@ -30,18 +30,46 @@ class fields_choices
         
   }  
   
-  public static function get_tree($fields_id,$parent_id = 0,$tree = array(),$level=0)
-  {
+  public static function get_tree($fields_id, $parent_id = 0, $tree = array(), $level=0, $display_choices_values='')
+  {  	
     $choices_query = db_query("select * from app_fields_choices where fields_id = '" . db_input($fields_id). "' and parent_id='" . db_input($parent_id). "' order by sort_order, name");
     
     while($v = db_fetch_array($choices_query))
     {
+    	if($display_choices_values==1)
+    	{
+    		$v['name'] = $v['name'] . (strlen($v['value']) ? ' (' . ($v['value']>=0 ? '+':'') . $v['value'] . ')' : '');
+    	}
+    	
       $tree[] = array_merge($v,array('level'=>$level));
       
-      $tree = fields_choices::get_tree($fields_id,$v['id'],$tree,$level+1);
+      $tree = fields_choices::get_tree($fields_id,$v['id'],$tree,$level+1,$display_choices_values);
     }
     
     return $tree;
+  }
+  
+  public static function get_js_level_tree($fields_id,$parent_id = 0,$tree = array(),$level=0,$display_choices_values='')
+  {
+  	$choices_query = db_query("select * from app_fields_choices where fields_id = '" . db_input($fields_id). "' and parent_id='" . db_input($parent_id). "' order by sort_order, name");
+  	  	 
+  	while($v = db_fetch_array($choices_query))
+  	{  
+  		if($parent_id>0)
+  		{
+  			if($display_choices_values==1)
+  			{
+  				$v['name'] = $v['name'] . (strlen($v['value']) ? ' (' . ($v['value']>=0 ? '+':'') . $v['value'] . ')' : '');  				
+  			}
+  			
+  			$tree[$parent_id][] = '
+  					$(update_field).append($("<option>", {value: ' . $v['id'] . ',text: "' . addslashes(strip_tags($v['name'])). '"}));';
+  		}
+  		
+  		$tree = fields_choices::get_js_level_tree($fields_id,$v['id'],$tree,$level+1,$display_choices_values);
+  	}
+  	  
+  	return $tree;
   }
   
   
@@ -87,11 +115,11 @@ class fields_choices
     }
   }  
   
-  public static function get_choices($fields_id,$add_empty = true, $empty_text = '')
+  public static function get_choices($fields_id,$add_empty = true, $empty_text = '',$display_choices_values='')
   {
     $choices = array();
     
-    $tree = fields_choices::get_tree($fields_id);
+    $tree = fields_choices::get_tree($fields_id,0,array(),0,$display_choices_values);
             
     if(count($tree)>0)
     {
@@ -153,6 +181,23 @@ class fields_choices
     }
     
     return $html;
+  }
+  
+  public static function get_paretn_ids($id,$parents=array())
+  {
+  	$choices_query = db_query("select * from app_fields_choices where id = '" . db_input($id). "' order by sort_order, name");
+  	
+  	while($v = db_fetch_array($choices_query))
+  	{
+  		$parents[] = $v['id'];
+  	
+  		if($v['parent_id']>0)
+  		{
+  			$parents = self::get_paretn_ids($v['parent_id'],$parents);
+  		}
+  	}
+  	
+  	return $parents;
   }
     
 }

@@ -11,6 +11,7 @@ switch($app_module_action)
                         'is_default'=>(isset($_POST['is_default']) ? $_POST['is_default']:0),
                         'bg_color'=>$_POST['bg_color'],                        
                         'sort_order'=>$_POST['sort_order'],
+                        'value'=>str_replace(',','.',$_POST['value']),
                         );
                                                                               
       if(isset($_POST['is_default']))
@@ -56,6 +57,14 @@ switch($app_module_action)
           }
           
           db_delete_row('app_fields_choices',$_GET['id']);
+          
+          //delete choices filters
+          $reports_info_query = db_query("select * from app_reports where reports_type='fields_choices" . $_GET['id'] . "'");
+          if($reports_info = db_fetch_array($reports_info_query))
+          {
+          	db_query("delete from app_reports_filters where reports_id='" . db_input($reports_info['id']) . "'");
+          	db_query("delete from app_reports where id='" . db_input($reports_info['id']) . "'");
+          }
           
           $alerts->add(sprintf(TEXT_WARN_DELETE_SUCCESS,$name),'success');
         }

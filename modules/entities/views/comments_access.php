@@ -18,18 +18,13 @@
     <td><?php echo TEXT_YES ?></td>    
   </tr>
     
-<?php
-    
-  $choices = array(''=>TEXT_NO,'view_create_update_delete'=>TEXT_YES,'view_create'=>TEXT_CREATE_ONLY_ACCESS,'view'=>TEXT_VIEW_ONLY_ACCESS);
-  
+<?php       
   $count = 0;
   $groups_query = db_query("select ag.* from app_access_groups ag, app_entities_access ea where ea.access_groups_id=ag.id and ea.entities_id='" . db_input($_GET['entities_id']) . "' and length(ea.access_schema)>0 order by ag.sort_order, ag.name");
   while($v = db_fetch_array($groups_query))
   {        
     $count++; 
-    
-    $access_schema = array('view' => '','create'=>false,'update'=>false,'delete'=>false);
-    
+           
     $schema = '';
     $acess_info_query = db_query("select access_schema from app_comments_access where entities_id='" . db_input($_GET['entities_id']) . "' and access_groups_id='" . $v['id']. "'");
     if($acess_info = db_fetch_array($acess_info_query))
@@ -40,11 +35,10 @@
     echo '
       <tr>
         <td>' . $v['name']. '</td>
-        <td>' . select_tag('access[' . $v['id']. ']',$choices,$schema,array('class'=>'form-control input-medium')) . '</td>        
+        <td>' . select_tag('access[' . $v['id']. ']',comments::get_access_choices(),$schema,array('class'=>'form-control input-medium')) . '</td>        
       </tr>    
     ';    
-  }
-  
+  }  
 ?>
 </table>
 </div>

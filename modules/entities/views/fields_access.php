@@ -6,10 +6,13 @@
 <?php echo input_hidden_tag('ui_accordion_active',0) ?>
 <?php
   $fields_list = array();
-  $fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where f.type not in (" . fields_types::get_reserverd_types_list(). ") and f.entities_id='" . db_input($_GET['entities_id']) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
+  $fields_query = db_query("select f.*, t.name as tab_name,if(f.type in ('fieldtype_id','fieldtype_date_added','fieldtype_created_by'),-1,t.sort_order) as tab_sort_order from app_fields f, app_forms_tabs t where f.type not in ('fieldtype_action','fieldtype_parent_item_id') and f.entities_id='" . db_input($_GET['entities_id']) . "' and f.forms_tabs_id=t.id order by tab_sort_order, t.name, f.sort_order, f.name");
   while($v = db_fetch_array($fields_query))
   {
-    $fields_list[$v['id']] = fields_types::get_option($v['type'],'name',$v['name']) ;
+    $fields_list[$v['id']] = array(
+    		'name' => fields_types::get_option($v['type'],'name',$v['name']),
+    		'type' => $v['type'] 
+    		);
   }
 ?>
 
@@ -20,7 +23,9 @@
     <?php echo TEXT_ADMINISTRATOR_FULL_ACCESS ?>
   </div>
 <?php
-  $access_choices = array('yes'=>TEXT_YES,'view'=>TEXT_VIEW_ONLY,'hide'=>TEXT_HIDE);
+  
+  $access_choices_default = array('yes'=>TEXT_YES,'view'=>TEXT_VIEW_ONLY,'hide'=>TEXT_HIDE);
+  $access_choices_internal = array('yes'=>TEXT_YES,'hide'=>TEXT_HIDE);
   
   $count = 0;
   $groups_query = db_fetch_all('app_access_groups','','sort_order, name');
@@ -28,7 +33,7 @@
   {     
     $entities_access_schema = users::get_entities_access_schema($_GET['entities_id'],$groups['id']);
     
-    if(!in_array('view',$entities_access_schema) and  !in_array('view_assigned',$entities_access_schema)) continue;
+    if(!in_array('view',$entities_access_schema) and  !in_array('view_assigned',$entities_access_schema) and $_GET['entities_id']!=1) continue;
                   
     $count++;
   
@@ -37,24 +42,27 @@
       <table class="table table-striped table-bordered table-hover">
         <tr>
           <th>' . TEXT_FIELDS . '</th>
-          <th>' . TEXT_ACCESS . ': ' . select_tag('access_' . $groups['id'],array_merge(array(''=>''),$access_choices),'',array('class'=>'form-control input-medium ','onChange'=>'set_access_to_all_fields(this.value,' . $groups['id'] . ')')) . '</th>
+          <th>' . TEXT_ACCESS . ': ' . select_tag('access_' . $groups['id'],array_merge(array(''=>''),$access_choices_default),'',array('class'=>'form-control input-medium ','onChange'=>'set_access_to_all_fields(this.value,' . $groups['id'] . ')')) . '</th>
         </tr>
       ';
       
     $access_schema = users::get_fields_access_schema($_GET['entities_id'],$groups['id']);
     
       
-    foreach($fields_list as $id=>$name)
+    foreach($fields_list as $id=>$field)
     {
       $value = (isset($access_schema[$id]) ? $access_schema[$id] : 'yes');
       
+      $access_choices = (in_array($field['type'],array('fieldtype_id','fieldtype_date_added','fieldtype_created_by')) ? $access_choices_internal : $access_choices_default);
+      
       $html .= '
         <tr>
-          <td>' . $name . '</td>
+          <td>' . $field['name'] . '</td>
           <td>' . select_tag('access[' . $groups['id']. '][' . $id . ']',$access_choices, $value,array('class'=>'form-control input-medium access_group_' . $groups['id'])). '</td>
         </tr>
       ';
     }
+    
     $html .= '</table></div>';
     
     echo '

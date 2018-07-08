@@ -3,11 +3,14 @@
   class split_page {
     var $sql_query, $number_of_rows, $current_page_number, $number_of_pages, $number_of_rows_per_page, $page_name, $listing_container;
 
+    public $listing_funciton;
+    
 /* class constructor */
     function __construct($query,$listing_container,$count_sql_query = 'query_num_rows',$rows_per_page = 0) {
       global $_GET, $_POST;
 
       $this->listing_container = $listing_container;
+      $this->listing_funciton = 'load_items_listing';
       
       
       $this->sql_query = $query;
@@ -82,7 +85,7 @@
 // previous button - not displayed on first page
       if ($this->current_page_number > 1)
       {
-        $html .= '<li><a href="#" onClick="load_items_listing(\'' . $this->listing_container . '\',' . ($this->current_page_number - 1) . '); return false;"  title=" ' . PREVNEXT_TITLE_PREVIOUS_PAGE . ' "><i class="fa fa-angle-left"></i></a></li>';
+        $html .= '<li><a href="#" onClick="' . $this->listing_funciton . '(\'' . $this->listing_container . '\',' . ($this->current_page_number - 1) . '); return false;"  title=" ' . PREVNEXT_TITLE_PREVIOUS_PAGE . ' "><i class="fa fa-angle-left"></i></a></li>';
       }
       else
       {
@@ -97,7 +100,7 @@
       if ($this->number_of_pages % $max_page_links) $max_window_num++;
 
 // previous window of pages
-      if ($cur_window_num > 1) $html .= '<li><a href="#" onClick="load_items_listing(\'' . $this->listing_container . '\',' . (($cur_window_num - 1) * $max_page_links) . '); return false;" title=" ' . sprintf(PREVNEXT_TITLE_PREV_SET_OF_NO_PAGE, $max_page_links) . ' ">...</a></li>';
+      if ($cur_window_num > 1) $html .= '<li><a href="#" onClick="' . $this->listing_funciton . '(\'' . $this->listing_container . '\',' . (($cur_window_num - 1) * $max_page_links) . '); return false;" title=" ' . sprintf(PREVNEXT_TITLE_PREV_SET_OF_NO_PAGE, $max_page_links) . ' ">...</a></li>';
 
 // page nn button
       for ($jump_to_page = 1 + (($cur_window_num - 1) * $max_page_links); ($jump_to_page <= ($cur_window_num * $max_page_links)) && ($jump_to_page <= $this->number_of_pages); $jump_to_page++) 
@@ -108,17 +111,17 @@
         } 
         else 
         {
-          $html .= '<li><a href="#" onClick="load_items_listing(\'' . $this->listing_container . '\',' . $jump_to_page . '); return false;" title=" ' . sprintf(PREVNEXT_TITLE_PAGE_NO, $jump_to_page) . ' ">' . $jump_to_page . '</a></li>';
+          $html .= '<li><a href="#" onClick="' . $this->listing_funciton . '(\'' . $this->listing_container . '\',' . $jump_to_page . '); return false;" title=" ' . sprintf(PREVNEXT_TITLE_PAGE_NO, $jump_to_page) . ' ">' . $jump_to_page . '</a></li>';
         }
       }
 
 // next window of pages
-      if ($cur_window_num < $max_window_num) $html .= '<li><a href="#"  onClick="load_items_listing(\'' . $this->listing_container . '\',' . ($cur_window_num * $max_page_links + 1) . ')" title=" ' . sprintf(PREVNEXT_TITLE_NEXT_SET_OF_NO_PAGE, $max_page_links) . ' ">...</a></li>';
+      if ($cur_window_num < $max_window_num) $html .= '<li><a href="#"  onClick="' . $this->listing_funciton . '(\'' . $this->listing_container . '\',' . ($cur_window_num * $max_page_links + 1) . ')" title=" ' . sprintf(PREVNEXT_TITLE_NEXT_SET_OF_NO_PAGE, $max_page_links) . ' ">...</a></li>';
 
 // next button
       if (($this->current_page_number < $this->number_of_pages) && ($this->number_of_pages != 1))
       { 
-        $html .= '<li><a href="#"  onClick="load_items_listing(\'' . $this->listing_container . '\',' . ($this->current_page_number + 1) . '); return false;" title=" ' . PREVNEXT_TITLE_NEXT_PAGE . ' "><i class="fa fa-angle-right"></i></a></li>';
+        $html .= '<li><a href="#"  onClick="' . $this->listing_funciton . '(\'' . $this->listing_container . '\',' . ($this->current_page_number + 1) . '); return false;" title=" ' . PREVNEXT_TITLE_NEXT_PAGE . ' "><i class="fa fa-angle-right"></i></a></li>';
       }
       else
       {

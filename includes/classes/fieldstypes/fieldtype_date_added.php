@@ -6,7 +6,7 @@ class fieldtype_date_added
   
   function __construct()
   {
-    $this->options = array('name'=>TEXT_FIELDTYPE_DATEADDED_TITLE);
+    $this->options = array('name'=>TEXT_FIELDTYPE_DATEADDED_TITLE, 'title'=>TEXT_FIELDTYPE_DATEADDED_TITLE);    
   }
   
   function output($options)

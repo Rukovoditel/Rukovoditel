@@ -42,21 +42,47 @@ if($reports_info['reports_type']!='common')
           echo button_tag((strlen($entity_cfg->get('insert_button'))>0 ? $entity_cfg->get('insert_button') : TEXT_ADD), $url) . ' ';
         } 
       ?>
-      
+
+
+<?php 
+	$with_selected_menu = '';
+	
+	if(users::has_access('export_selected',$access_schema) and users::has_access('export',$access_schema))
+	{
+		$with_selected_menu .= '<li>' . link_to_modalbox('<i class="fa fa-file-excel-o"></i> ' . TEXT_EXPORT,url_for('items/export','path=' . $reports_info["entities_id"]  . '&reports_id=' . $reports_info['id'] )) . '</li>';
+	}
+
+	if(class_exists('processes'))
+	{
+		$processes = new processes($reports_info['entities_id']);
+		$processes->rdirect_to = 'reports';
+		$with_selected_menu .=  $processes->render_buttons('menu_with_selected',$reports_info['id']);
+	}
+
+	if(users::has_access('update_selected',$access_schema))
+	{
+  	$with_selected_menu .=  plugins::render_simple_menu_items('with_selected');
+	}
+  
+  if(entities::has_subentities($reports_info['entities_id'])==0 and users::has_access('delete',$access_schema) and users::has_access('delete_selected',$access_schema) and $reports_info['entities_id']!=1)
+  {
+  	$with_selected_menu .=  '<li>' . link_to_modalbox('<i class="fa fa-trash-o"></i> ' . TEXT_BUTTON_DELETE,url_for('items/delete_selected', 'redirect_to=report_' . $reports_info['id'] . '&path=' . $reports_info['entities_id'] . '&reports_id=' . $reports_info['id'] )) . '</li>';
+  }
+    
+if(strlen($with_selected_menu))
+{
+?>      
       <div class="btn-group">
 				<button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" data-hover="dropdown">
 				<?php echo TEXT_WITH_SELECTED ?> <i class="fa fa-angle-down"></i>
 				</button>
 				<ul class="dropdown-menu" role="menu">
-					<li>
-						<?php echo link_to_modalbox(TEXT_EXPORT,url_for('items/export','path=' . $reports_info["entities_id"]  . '&reports_id=' . $reports_info['id'] )) ?>
-					</li>
-<?php 
-  echo plugins::render_simple_menu_items('with_selected'); 
-?>           
+					<?php echo $with_selected_menu ?>          
 				</ul>
 			</div>
-            
+<?php 
+	} 
+?>
     </div>
   </div>
   <div class="col-sm-6">
@@ -73,6 +99,7 @@ if($reports_info['reports_type']!='common')
 </div>
 
 <?php echo input_hidden_tag($listing_container . '_order_fields',$reports_info['listing_order_fields']) ?>
+<?php echo input_hidden_tag($listing_container . '_has_with_selected',(strlen($with_selected_menu) ? 1:0)) ?>
 
 <?php require(component_path('items/load_items_listing.js')); ?>
 

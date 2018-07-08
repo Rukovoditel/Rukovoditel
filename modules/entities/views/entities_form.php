@@ -47,7 +47,12 @@
 
 <script>
   $(function() { 
-    $('#entities_form').validate();                                                                  
+    $('#entities_form').validate({
+			submitHandler: function(form){
+				app_prepare_modal_action_loading(form)
+				form.submit();
+			}
+    });                                                                  
   });
   
 </script>   

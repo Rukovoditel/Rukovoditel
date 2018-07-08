@@ -13,11 +13,26 @@
 			 button_tag(TEXT_BUTTON_IMPORT,url_for('global_lists/choices_import','lists_id=' . $_GET['lists_id']),true,array('class'=>'btn btn-default')); 
 ?>
 
+<div class="btn-group">
+	<button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" data-hover="dropdown">
+	<?php echo TEXT_WITH_SELECTED ?> <i class="fa fa-angle-down"></i>
+	</button>
+	<ul class="dropdown-menu" role="menu">
+		<li>
+			<?php echo link_to_modalbox(TEXT_BUTTON_EDIT,url_for('global_lists/choices_multiple_edit','lists_id=' . $_GET['lists_id'])) ?>
+		</li>
+		<li>
+			<?php echo link_to_modalbox(TEXT_DELETE,url_for('global_lists/choices_multiple_delete','lists_id=' . $_GET['lists_id'])) ?>
+		</li> 		
+  </ul>
+</div> 
+
 <div class="table-scrollable">
 <table class="table table-striped table-bordered table-hover">
 <thead>
   <tr>
-    <th>Action</th>
+ 		<th><?php echo input_checkbox_tag('select_all_fields','',array('class'=>'select_all_fields'))?></th> 
+    <th><?php echo TEXT_ACTION?></th>
     <th>#</th>    
     <th width="100%"><?php echo TEXT_NAME ?></th>            
     <th><?php echo TEXT_IS_DEFAULT ?></th>
@@ -35,6 +50,7 @@ if(count($tree)==0) echo '<tr><td colspan="9">' . TEXT_NO_RECORDS_FOUND. '</td><
 foreach($tree as $v):
 ?>
 <tr>
+	<td><?php echo input_checkbox_tag('choices[]',$v['id'],array('class'=>'fields_checkbox'))?></td>
   <td style="white-space: nowrap;"><?php 
       echo button_icon_delete(url_for('global_lists/choices_delete','id=' . $v['id'] . '&lists_id=' . $_GET['lists_id'])); 
       echo ' ' . button_icon_edit(url_for('global_lists/choices_form','id=' . $v['id'] . '&lists_id=' . $_GET['lists_id']));
@@ -50,6 +66,12 @@ foreach($tree as $v):
 </tbody>
 </table>
 </div>
+
+<script>
+  $('#select_all_fields').click(function(){
+    select_all_by_classname('select_all_fields','fields_checkbox')    
+  })
+</script>
 
 
 

@@ -36,6 +36,17 @@
 
 <script type="text/javascript" src="js/main.js"></script>
 
+<script>
+	function keep_session()
+	{
+	  $.ajax({url: '<?php echo url_for("dashboard/","action=keep_session") ?>'});
+	}
+	
+	$(function(){
+	   setInterval("keep_session()",600000);                                                                   
+	}); 
+</script>
+
 <link rel="stylesheet" type="text/css" href="css/default.css"/>
 
 <?php echo render_login_page_background() ?>
@@ -120,6 +131,13 @@
 <!-- BEGIN PAGE LEVEL SCRIPTS -->
 <script src="template/scripts/app.js" type="text/javascript"></script>
 <!-- END PAGE LEVEL SCRIPTS -->
+
+<?php 
+	if(is_ext_installed())
+	{
+		echo smart_input::render_js_includes();	
+	}
+?>
 
 <script>
 jQuery(document).ready(function() {     

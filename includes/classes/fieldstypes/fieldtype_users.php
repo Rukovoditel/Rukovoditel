@@ -30,6 +30,8 @@ class fieldtype_users
     	$cfg[] = array('title'=>TEXT_DISABLE_USERS_DEPENDENCY, 'name'=>'disable_dependency','type'=>'checkbox','tooltip_icon'=>TEXT_DISABLE_USERS_DEPENDENCY_INFO);
     }       
     
+    $cfg[] = array('title'=>TEXT_HIDE_ADMIN, 'name'=>'hide_admin','type'=>'checkbox');
+    
     return $cfg;
   }  
   
@@ -75,10 +77,21 @@ class fieldtype_users
     
     
     
-    //get users choices
+    $value = ($obj['field_' . $field['id']]>0 ? $obj['field_' . $field['id']] : '');
+                    
+    //get users choices   
+    //select all active users or already assigned users
+    $where_sql = (strlen($value) ? "(u.field_5=1 or u.id in (" . $value ."))" : "u.field_5=1");
+    
+    //hide administrators
+    if($cfg->get('hide_admin')==1)
+    {
+    	$where_sql .= " and u.field_6>0 ";
+    }
+    
     $choices = array();
     $order_by_sql = (CFG_APP_DISPLAY_USER_NAME_ORDER=='firstname_lastname' ? 'u.field_7, u.field_8' : 'u.field_8, u.field_7');
-    $users_query = db_query("select u.*,a.name as group_name from app_entity_1 u left join app_access_groups a on a.id=u.field_6 order by " . $order_by_sql);
+    $users_query = db_query("select u.*,a.name as group_name from app_entity_1 u left join app_access_groups a on a.id=u.field_6 where {$where_sql} order by group_name, " . $order_by_sql);
     while($users = db_fetch_array($users_query))
     {
       if(!isset($access_schema[$users['field_6']]))
@@ -88,19 +101,24 @@ class fieldtype_users
         
       if($users['field_6']==0 or in_array('view',$access_schema[$users['field_6']]) or in_array('view_assigned',$access_schema[$users['field_6']]))
       {
-        if($has_parent_users and !in_array($users['id'],$parent_users_list)) continue;
+      	//check parent users and check already assigned
+        if($has_parent_users and !in_array($users['id'],$parent_users_list) and !in_array($users['id'],explode(',',$value))) continue;
         
         $group_name = (strlen($users['group_name'])>0 ? $users['group_name'] : TEXT_ADMINISTRATOR);
         $choices[$group_name][$users['id']] = $app_users_cache[$users['id']]['name'];
       } 
     }
         
-    $value = ($obj['field_' . $field['id']]>0 ? $obj['field_' . $field['id']] : ''); 
+     
     
     if($cfg->get('display_as')=='dropdown')
     {
+    	//add empty value for comment form
+    	$choices = ($params['form']=='comment' ? array(''=>'')+$choices:$choices);
+    	
       $attributes = array('class'=>'form-control chosen-select input-large field_' . $field['id'] . ($field['is_required']==1 ? ' required':''));
-      return select_tag('fields[' . $field['id'] . ']',$choices,$value,$attributes);
+      
+      return select_tag('fields[' . $field['id'] . ']',array(''=>TEXT_NONE)+$choices,$value,$attributes);
     }
     elseif($cfg->get('display_as')=='checkboxes')
     {

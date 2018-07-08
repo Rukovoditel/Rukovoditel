@@ -1,5 +1,6 @@
 <?php
-  define('PROJECT_VERSION','1.9');
+  define('PROJECT_VERSION','2.2.1');
+  define('PROJECT_VERSION_DEV','');
   
 //check if installed
   if(!is_file('config/database.php'))
@@ -16,10 +17,7 @@
   
 //is AJAX request
   define('IS_AJAX', isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
-  
-//is HTTPS
-	define('IS_HTTPS',(isset($_SERVER['HTTPS']) ? ($_SERVER['HTTPS']=='on' ? true : false): false));
-    
+      
 //load core  
   require('includes/application_core.php');
   
@@ -81,6 +79,13 @@
     app_session_register('uploadify_attachments');    
   }  
   
+    
+  if (!app_session_is_registered('uploadify_attachments_queue'))
+  {
+  	$uploadify_attachments_queue = array();
+  	app_session_register('uploadify_attachments_queue');
+  }
+  
   
 // create the alerts object
   if (!app_session_is_registered('alerts') || !is_object($alerts)) 
@@ -94,6 +99,18 @@
     app_session_register('app_send_to');
     $app_send_to = array();
   } 
+    
+  if (!app_session_is_registered('app_session_token'))
+  {
+  	$app_session_token = users::get_random_password(10);
+  	app_session_register('app_session_token');  	
+  }
+  
+  if (!app_session_is_registered('app_current_users_filter'))
+  {
+  	$app_current_users_filter = array();
+  	app_session_register('app_current_users_filter');
+  }
         
 
   if(!isset($_GET['module']))
@@ -141,14 +158,12 @@
 
     
 //check if user logged
-  $allowed_modules = array('users/login','users/restore_password','users/ldap_login','ext/calendar/icalexport');
+  $allowed_modules = array('users/login','users/restore_password','users/ldap_login','ext/calendar/icalexport','ext/public/form','ext/public/check','dashboard/vpic');
   
   if(CFG_USE_PUBLIC_REGISTRATION==1)
   {
   	$allowed_modules[] = 'users/registration';
-  	$allowed_modules[] = 'users/validate_form';
-  	$allowed_modules[] = 'dashboard/vpic';
-  	
+  	$allowed_modules[] = 'users/validate_form';  	  	
   }
   
   if (!app_session_is_registered('app_logged_users_id') and !in_array($_GET['module'],$allowed_modules)) 
@@ -191,7 +206,18 @@
                         'photo'=>$photo,
                         'language'=>$user['field_13'],
                         'skin'=>$user['field_14'],
-                        );                                                      
+                        ); 
+      
+      //generat users access to entities schema
+      if($app_user['group_id']>0)
+      {	
+      	$app_users_access = users::get_users_access_schema($app_user['group_id']);
+      }
+      else 
+      {
+      	$app_users_access = array();
+      }
+                             
     }
     else
     {
@@ -208,6 +234,11 @@
     $app_current_version = '';
     app_session_register('app_current_version');    
   } 
+  
+  if(CFG_DISABLE_CHECK_FOR_UPDATES==1)
+  {
+  	$app_current_version = '';
+  }
   
   
   if (!app_session_is_registered('app_selected_items')) 
@@ -268,5 +299,11 @@
   else
   {
     $app_skin = 'default/default.css';
-  }       
+  }  
+  
+  if(!defined('IS_CRON'))
+  {
+  	$app_users_cache  = users::get_cache();
+  }
+  
               

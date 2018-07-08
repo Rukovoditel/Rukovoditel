@@ -1,5 +1,11 @@
 <?php
 
+	//force ldap login only
+	if(CFG_LDAP_USE==1 and CFG_USE_LDAP_LOGIN_ONLY==1 and $app_module_action!='logoff')
+	{
+		redirect_to('users/ldap_login');
+	}
+
 	//check security settings if they are enabled 
 	app_restricted_countries::verify();
 	app_restricted_ip::verify();
@@ -25,6 +31,9 @@
       break;
     case 'login':                
         
+    		//chck form token
+    		app_check_form_token('users/login');
+    		
     		//check reaptcha
         if(app_recaptcha::is_enabled())
         {

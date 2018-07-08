@@ -28,9 +28,11 @@
   
   function form_tag($name,$action,$attributes = array())
   {
+  	global $app_session_token;
+  	
     $default = array('name'=>$name,'id'=>generate_id_from_name($name),'method'=>'post');
     
-    return '<form action="' . $action . '" ' . tag_attributes_to_html($default,$attributes) . '>';
+    return '<form action="' . $action . '" ' . tag_attributes_to_html($default,$attributes) . '> ' . input_hidden_tag('form_session_token',$app_session_token);
   }
   
   
@@ -106,8 +108,8 @@
     $html = '';
     
     if(!is_array($value))
-    {
-      $value = explode(',',$value);
+    {    	
+      $value = (strlen($value) ? explode(',',$value) : array());
     }
     
     foreach($choices as $k=>$v)
@@ -209,7 +211,7 @@
   {
     $default = array('name'=>$name,'id'=>generate_id_from_name($name), 'wrap'=>'soft');
     
-    return '<textarea ' . tag_attributes_to_html($default,$attributes) . '>' . $value . '</textarea>';
+    return '<textarea ' . tag_attributes_to_html($default,$attributes) . '>' . htmlspecialchars((string) $value, ENT_NOQUOTES, 'UTF-8') . '</textarea>';
   }
   
   function button_tag($value,$url,$is_dialog = true,$attributes=array(),$left_icon='', $right_icon='')

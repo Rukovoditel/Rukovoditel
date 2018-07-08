@@ -56,8 +56,11 @@ class related_records
       }
                
       //check field access
+      $current_field_access = '';
       if(isset($fields_access_schema[$field['id']]))
       {
+      	$current_field_access = $fields_access_schema[$field['id']];
+      	
         if($fields_access_schema[$field['id']]=='hide') continue;
       }
                                     
@@ -73,24 +76,81 @@ class related_records
       //render list
       $this->field = $field;
         
-      $html .= $this->render_single_list();   
+      $html .= $this->render_single_list($current_field_access);   
         
     }
      
     return $html;
   }
   
-  function render_single_list()
+  static function get_report_info($field_info)
   {
-    global $current_path;
+  	global $app_heading_fields_id_cache;
+  	
+  	$cfg = new fields_types_cfg($field_info['configuration']);
+  	
+  	$entity_id = $cfg->get('entity_id');
+  	$reports_type = 'related_items_' . $field_info['id'];
+  	
+  	$reports_info_query = db_query("select * from app_reports where entities_id='" . db_input($entity_id). "' and reports_type='" . $reports_type . "'");
+  	if(!$reports_info = db_fetch_array($reports_info_query))
+  	{
+  		$fields_in_listing  = (isset($app_heading_fields_id_cache[$entity_id]) ? $app_heading_fields_id_cache[$entity_id]:'');
+  		
+  		if(strlen($cfg->get('fields_in_listing'))>0)
+  		{
+  			$fields_in_listing .= (strlen($fields_in_listing) ? ',':'') . $cfg->get('fields_in_listing'); 
+  		}
+  		
+  		$sql_data = array('name'=>'',
+  				'entities_id'=>$entity_id,
+  				'reports_type'=>$reports_type,
+  				'in_menu'=>0,
+  				'in_dashboard'=>0,
+  				'fields_in_listing'=>$fields_in_listing,
+  				'created_by'=>0,
+  				'parent_entity_id' => 0,
+  				'parent_item_id' => 0,
+  		);
+  		
+  		db_perform('app_reports',$sql_data);
+  		
+  		$reports_id = db_insert_id();
+  		
+  		reports::auto_create_parent_reports($reports_id);
+  		
+  		$reports_info = db_find('app_reports',$reports_id);
+  	}
+  	  	  	
+  	return $reports_info;
+  }
+  
+  function render_single_list($current_field_access)
+  {
+    global $current_path, $app_path;
   
     $count_related_items = $this->count_related_items();
+    
+    $reports_info = self::get_report_info($this->field);
+    
+    $listing_container = 'entity_items_listing' . $reports_info['id'] . '_' .  $reports_info['entities_id'];
+    
+    $entity_cfg = new entities_cfg($reports_info['entities_id']);
+    
+    $with_selected_menu = '';
+    	
+    if(users::has_access('export_selected',$this->entities_access_schema) and users::has_access('export',$this->entities_access_schema))
+    {
+    	$with_selected_menu .= '<li>' . link_to_modalbox('<i class="fa fa-file-excel-o"></i> ' . TEXT_EXPORT,url_for('items/export','path=' . $reports_info["entities_id"]  . '&reports_id=' . $reports_info['id'] )) . '</li>';
+    }
+    
+    $with_selected_menu .=  plugins::include_dashboard_with_selected_menu_items($reports_info['id'],'&path=' . $app_path . '/' .  $reports_info['entities_id'] . '&redirect_to=parent_item_info_page');
     
     $html = '
     <div class="portlet portlet-related-items">
 			<div class="portlet-title">
 				<div class="caption">        
-          ' . fields_types::get_option($this->field['type'],'name',$this->field['name']) . '&nbsp;(<span id="related_items_count_' . $this->field['id'] . '">' . $count_related_items .'</span>)             
+          ' . fields_types::get_option($this->field['type'],'name',$this->field['name']) . '              
         </div>
         <div class="tools">
 					<a href="javascript:;" class="collapse"></a>
@@ -98,21 +158,52 @@ class related_records
         
 			</div>
 			<div class="portlet-body">
-        
-        ' . ($count_related_items>0 ? $this->render_list($this->field) : '') . '
-        
-        ' . (users::has_access('update',$this->current_entities_access_schema) ? 
-              '<div class="action-button">        
-                ' . link_to_modalbox('<i class="fa fa-plus"></i> ' . TEXT_BUTTON_ADD,$this->get_add_url(),array('class'=>'btn btn-default btn-xs')) . ' &nbsp;          
-                ' . link_to_modalbox('<i class="fa fa-link"></i> ' . TEXT_BUTTON_LINK,url_for('items/link_related_item','path=' . $current_path . '&related_entities=' . $this->cfg->get('entity_id')),array('class'=>'btn btn-default btn-xs')) . ' &nbsp;        
-                ' . ($count_related_items>0 ? link_to_modalbox('<i class="fa fa-unlink" title="' . htmlspecialchars(TEXT_UNLINK) . '"></i>',url_for('items/unlink_related_item','path=' . $current_path . '&fields_id=' . $this->field['id'] . '&related_entities_id=' . $this->cfg->get('entity_id')),array('class'=>'btn btn-default btn-xs')) : '') . ' &nbsp;
-              </div>' 
-              : '') .'        
+          		
+        ' . ((users::has_access('update',$this->current_entities_access_schema) and $current_field_access!='view') ? 
+              	(users::has_access('create',$this->entities_access_schema) ? button_tag((strlen($entity_cfg->get('insert_button'))>0 ? $entity_cfg->get('insert_button') : TEXT_ADD), $this->get_add_url(),true,array('class'=>'btn btn-primary btn-sm')):'') . '
+        				' . button_tag('<i class="fa fa-link"></i>', url_for('items/link_related_item','path=' . $current_path . '&related_entities=' . $this->cfg->get('entity_id')),true,array('class'=>'btn btn-primary btn-sm', 'title'=>TEXT_BUTTON_LINK)) . '
+                ' . ($count_related_items>0 ? button_tag('<i class="fa fa-unlink"></i>',url_for('items/unlink_related_item','path=' . $current_path . '&fields_id=' . $this->field['id'] . '&related_entities_id=' . $this->cfg->get('entity_id')), true, array('class'=>'btn btn-primary btn-sm', 'title'=>TEXT_UNLINK)) : '') . ' &nbsp;'
+        			 . ((strlen($with_selected_menu) and $count_related_items>0) ? '
+	            <div class="btn-group">
+	      				<button class="btn btn-default dropdown-toggle btn-sm" type="button" data-toggle="dropdown" data-hover="dropdown">
+	      				' . TEXT_WITH_SELECTED . '<i class="fa fa-angle-down"></i>
+	      				</button>
+	      				<ul class="dropdown-menu" role="menu">
+	      					' . $with_selected_menu . '                
+	      				</ul>
+	      			</div>': '') 
+        		
+              : '') .'  		
+          		
+        <div id="' . $listing_container . '" class="entity_items_listing"></div>
+        ' . input_hidden_tag($listing_container . '_order_fields',$reports_info['listing_order_fields']) . 
+	      		input_hidden_tag($listing_container . '_has_with_selected',(strlen($with_selected_menu) ? 1:0)) .
+	          input_hidden_tag($listing_container . '_force_display_id', implode(',',array(0)+$this->get_related_items())) . 
+	          input_hidden_tag($listing_container . '_redirect_to','related_records_info_page_' . $app_path) .	          		                
+	          input_hidden_tag($listing_container . '_force_popoup_fields',$this->cfg->get('fields_in_popup')) . '
+                
       </div>
-    </div>    
+    </div>
+              		
+    <script>
+		  $(function() {     
+		    load_items_listing("' . $listing_container . '",1);                                                                         
+		  });    
+	  </script>
     ';
     
     return $html;
+  }
+  
+  static function handle_app_redirect()
+  {
+  	global $app_redirect_to;
+  	
+  	if(strstr($app_redirect_to,'related_records_info_page_'))
+  	{
+  		$path = str_replace('related_records_info_page_','',$app_redirect_to);
+  		redirect_to('items/info','path=' . $path);
+  	}	
   }
   
   function get_add_url()
@@ -143,287 +234,7 @@ class related_records
     
     return $add_url;   
   }
-  
-  function render_list()
-  {
-    global $app_user, $parent_entity_item_id, $current_path;
-        
-    $entity_info = db_find('app_entities',$this->cfg->get('entity_id'));            
-    $entity_cfg = entities::get_cfg($this->cfg->get('entity_id'));
-    $fields_access_schema = users::get_fields_access_schema($this->cfg->get('entity_id'),$app_user['group_id']);
-    
-    $comments_access_schema = users::get_comments_access_schema($this->cfg->get('entity_id'),$app_user['group_id']);
-    $user_has_comments_access = users::has_comments_access('view',$comments_access_schema);
-                 
-    $fields_in_listing = (strlen($this->cfg->get('fields_in_listing'))>0 ? $this->cfg->get('fields_in_listing') :0); 
-    
-    
-    $css_scrollalbe = ($this->cfg->get('rows_per_page')>0 ? '':'table-scrollable');
-    
-    $html = '
-  <div class="related_itmes_listing">  
-    <div class="' . $css_scrollalbe . '">
-      <div class="' . $css_scrollalbe . ' table-wrapper">
-        <table class="table table-striped table-bordered table-hover ' . ($this->cfg->get('rows_per_page')>0 ? 'data-table':''). '" data-count-fixed-columns="0" data-page-length="' . $this->cfg->get('rows_per_page') . '">
-          <thead>
-            <tr>
-              ';
-
-    //render listing heading
-    $listing_fields = array();   
-    $listing_numeric_fields = array();
-    $fields_query = db_query("select f.*,if(length(f.short_name)>0,f.short_name,f.name) as name  from app_fields f where (f.id in (" . $fields_in_listing . ") or f.is_heading=1) and  f.entities_id='" . db_input($this->cfg->get('entity_id')) . "' order by f.is_heading desc,f.listing_sort_order, f.name");
-    while($v = db_fetch_array($fields_query))
-    {      
-      //check field access
-      if(isset($fields_access_schema[$v['id']]))
-      {
-        if($fields_access_schema[$v['id']]=='hide') continue;
-      }                
-           
-      $html .= '
-          <th><div>' . fields_types::get_option($v['type'],'name',$v['name']). '</div></th>
-      ';
       
-      $listing_fields[] = $v;
-    }  
-    
-    if(users::has_access('update',$this->current_entities_access_schema))
-    {
-      $html .= '
-          <td data-orderable="false"></td>';
-    }
-                    
-    $html .= '          
-        </tr>
-      </thead>
-      <tbody>        
-    ';  
-    
-  
-$fields_totals_array = array();
-$has_numeric_fields = false;  
-    
-$listing_sql_query_select = '';
-$listing_sql_query = '';
-$listing_sql_query_join = '';    
-    
-//prepare forumulas query
-$listing_sql_query_select = fieldtype_formula::prepare_query_select($this->cfg->get('entity_id'), $listing_sql_query_select);
-
-//prepare count of related items in listing
-$listing_sql_query_select = fieldtype_related_records::prepare_query_select($this->cfg->get('entity_id'), $listing_sql_query_select);
-
-//get related times array
-$related_items = $this->get_related_items();  
-
-$listing_sql_query .= " and e.id in (" . implode(',',$related_items) . ")";
-
-
-//check view assigned only access
-$listing_sql_query = items::add_access_query($this->cfg->get('entity_id'),$listing_sql_query);
-
-//include access to parent records
-$listing_sql_query .= items::add_access_query_for_parent_entities($this->cfg->get('entity_id'));
-
-//add default order
-$listing_sql_query .= items::add_listing_order_query_by_entity_id($this->cfg->get('entity_id'));  
-
-      
-//render listing body
-$listing_sql = "select distinct e.* " . $listing_sql_query_select . " from app_entity_" . $this->cfg->get('entity_id') . " e "  . $listing_sql_query_join . " where e.id>0 " . $listing_sql_query;
-$items_query = db_query($listing_sql);
-while($item = db_fetch_array($items_query))
-{
-  $related_id = array_search($item['id'],$related_items);
-   
-  $html .= '
-      <tr  id="related-records-' . $related_id . '">                             
-  ';
-         
-  foreach($listing_fields as $field)
-  {  
-    //check field access
-    if(isset($fields_access_schema[$field['id']]))
-    {
-      if($fields_access_schema[$field['id']]=='hide') continue;
-    }
-    
-    switch($field['type'])
-    {
-      case 'fieldtype_created_by':
-          $value = $item['created_by'];
-        break;
-      case 'fieldtype_date_added':
-          $value = $item['date_added'];                
-        break;
-      case 'fieldtype_action':                
-      case 'fieldtype_id':
-          $value = $item['id'];
-        break;
-      default:
-          $value = $item['field_' . $field['id']]; 
-        break;
-    }
-    
-    $path_info = items::get_path_info($this->cfg->get('entity_id'),$item['id']);
-    
-    $output_options = array('class'=>$field['type'],
-                            'value'=>$value,
-                            'field'=>$field,
-                            'item'=>$item,
-                            'is_listing'=>true,                                                        
-                            'redirect_to' => '',                            
-                            'path'=> $path_info['full_path']);
-                                                                
-    if($field['is_heading']==1)
-    { 
-    
-      //get fields in popup
-      $fields_in_popup = fields::get_items_fields_data_by_id($item,$this->cfg->get('fields_in_popup'),$this->cfg->get('entity_id'),$fields_access_schema);
-      $popup_html = '';
-      if(count($fields_in_popup))
-      {
-        $popup_html = app_render_fields_popup_html($fields_in_popup); 
-      }
-        
-      
-      //include paretn name if parent entities are different
-      $parent_name = '';
-      if(isset($parent_entity_item_id))
-      {
-        $path_array = items::parse_path($current_path);
-                                                                           
-        if(($entity_info['parent_id']!=$path_array['parent_entity_id'] and $item['parent_item_id']>0) or ($item['parent_item_id']>0 and $path_array['parent_entity_item_id']!=$item['parent_item_id']))
-        {                                        
-          $parent_name = items::get_heading_field($entity_info['parent_id'],$item['parent_item_id']) . '&nbsp;<i class="fa fa-angle-right"></i>&nbsp;';                    
-        }
-      }
-      
-      $path = $path_info['full_path'];
-      
-      
-      if($this->cfg->get('entity_id')==1)
-      {
-        $name = users::output_heading_from_item($item);
-      }
-      else
-      {
-        $name = fields_types::output($output_options);
-      }
-            
-      $html .= '
-          <td class="' . $field['type'] . ' related_item_heading_td" ><a ' . $popup_html . ' href="' . url_for('items/info', 'path=' . $path . '&redirect_to=subentity') . '">'  . $parent_name .  $name . '</a>
-      ';
-      
-      if($entity_cfg['use_comments']==1 and $user_has_comments_access)
-      {
-        $html .= comments::get_last_comment_info($this->cfg->get('entity_id'),$item['id'],$path);
-      }
-      
-      $html .= '</td>';
-    }
-    else
-    {
-      $td_class = (in_array($field['type'],array('fieldtype_action','fieldtype_date_added','fieldtype_input_datetime')) ? 'class="' . $field['type'] . ' nowrap"':'class="' . $field['type'] . '"');      
-      $html .= '
-          <td ' . $td_class . '>' . fields_types::output($output_options) . '</td>
-      ';
-    }
-    
-    
-    $field_cfg = new fields_types_cfg($field['configuration']);
-    
-    //calculate totals for numeric fields
-    if(in_array($field['type'],array('fieldtype_input_numeric','fieldtype_formula','fieldtype_input_numeric_comments')) and $field_cfg->get('donot_calclulate_totals')!=1)
-    {      
-      $has_numeric_fields = true;
-      
-      if(!isset($fields_totals_array[$field['id']]))
-      {
-        $fields_totals_array[$field['id']] = $value;
-      }
-      else
-      {
-        $fields_totals_array[$field['id']] += $value;
-      }      
-    }    
-     
-  }
-      
-  
-  if(users::has_access('update',$this->current_entities_access_schema))
-  {
-    $html .= '
-          <td>
-            <a onClick="return confirm(i18n[\'TEXT_ARE_YOU_SURE\'])" href="' . url_for('items/related_item','action=remove_related_item&path=' . $current_path . '&id=' . $related_id . '&related_entity_id=' . $this->cfg->get('entity_id')). '" title="' . TEXT_BUTTON_DELETE_RELATION . '" class="btn btn-default btn-xs btn-xs-fa-centered"><i class="fa fa-chain-broken"></i></a>
-          </td>';
-  }
-      
-  $html .= '  
-      </tr>';
-        
-}    
-        
-    $html .= '
-          </tbody>';
-          
-if($has_numeric_fields)
-{
-  $html .= '
-    <tfoot>
-      <tr>
-    ';
-  foreach($listing_fields as $field)
-  {
-    if(isset($fields_totals_array[$field['id']]))
-    {
-    	$value = $fields_totals_array[$field['id']];
-    	
-    	$cfg = new fields_types_cfg($field['configuration']);
-    	
-    	if(strlen($cfg->get('number_format'))>0 and strlen($value)>0)
-    	{
-    		$format = explode('/',str_replace('*','',$cfg->get('number_format')));
-    	
-    		$value = number_format($value,$format[0],$format[1],$format[2]);
-    	}
-    	elseif(strstr($value,'.'))
-    	{
-    		$value = number_format($value,2,'.','');
-    	}
-    	
-      $html .= '<td class="numeric_fields_total_values">' . $value . '</td>';
-    }
-    else
-    {
-      $html .= '<td></td>';
-    }
-  }
-  
-  if(users::has_access('update',$this->current_entities_access_schema))
-  {
-    $html .='
-       <td></td>';
-  }
-  
-  $html .='        
-      </tr>
-    </tfoot>
-  ';
-}          
-    
-    $html .= '  
-        </table>
-      </div>
-    </div>
-  </div>          
-    ';    
-    
-    return $html;  
-    
-  }
-  
   public static function get_related_items_table_name($entities_id, $related_entities_id)
   {
   	if($entities_id>$related_entities_id)
@@ -572,9 +383,9 @@ if($has_numeric_fields)
   			{
   				$sql = '
 		          CREATE TABLE IF NOT EXISTS `' . $table_info['table_name'] . '` (
-		            `id` int(11) NOT NULL AUTO_INCREMENT,
-		            `entity_' .$entities_id .  '_items_id` int(11) NOT NULL,
-		            `entity_' . $related_entities_id . $table_info['sufix'] . '_items_id` int(11) NOT NULL,
+		            `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+		            `entity_' .$entities_id .  '_items_id` int(11) UNSIGNED NOT NULL,
+		            `entity_' . $related_entities_id . $table_info['sufix'] . '_items_id` int(11) UNSIGNED NOT NULL,
 		            PRIMARY KEY (`id`),
 		            KEY `idx_' . $entities_id . '_items_id` (`entity_' . $entities_id . '_items_id`),
 		            KEY `idx_' . $related_entities_id  . $table_info['sufix'] . '_items_id` (`entity_' . $related_entities_id  . $table_info['sufix'] . '_items_id`)

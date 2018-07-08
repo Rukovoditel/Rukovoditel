@@ -8,6 +8,7 @@
 <script src="js/mapbbcode-master/src/controls/FunctionButton.js"></script>
 <script src="js/mapbbcode-master/src/controls/LetterIcon.js"></script>
 <script src="js/mapbbcode-master/src/controls/PopupIcon.js"></script>
+<script src="js/mapbbcode-master/src/controls/Leaflet.Search.js"></script>
 <script src="js/mapbbcode-master/src/handlers/Handler.Text.js"></script>
 <script src="js/mapbbcode-master/src/handlers/Handler.Color.js"></script>
 <script src="js/mapbbcode-master/src/handlers/Handler.Length.js"></script>

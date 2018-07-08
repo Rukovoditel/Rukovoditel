@@ -6,7 +6,7 @@ class fieldtype_user_email
   
   function __construct()
   {
-    $this->options = array('name' => TEXT_FIELDTYPE_USER_EMAIL_TITLE);
+    $this->options = array('name' => TEXT_FIELDTYPE_USER_EMAIL_TITLE,'title' => TEXT_FIELDTYPE_USER_EMAIL_TITLE);
   }
   
   function render($field,$obj,$params = array())

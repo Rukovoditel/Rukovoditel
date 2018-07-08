@@ -16,3 +16,6 @@
   		redirect_to('entities/entities');
   	}
   }
+  
+  //check privileges
+  db_check_privileges();

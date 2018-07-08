@@ -28,12 +28,16 @@ class fieldtype_dropdown
                    'tooltip_icon'=>TEXT_ENTER_WIDTH,
                    'params'=>array('class'=>'form-control input-medium'));
     
+    $cfg[] = array('title'=>TEXT_HIDE_FIELD_IF_EMPTY, 'name'=>'hide_field_if_empty','type'=>'checkbox','tooltip_icon'=>TEXT_HIDE_FIELD_IF_EMPTY_TIP);
+    
     $cfg[] = array('title'=>TEXT_USE_SEARCH, 
                    'name'=>'use_search',
                    'type'=>'dropdown',
                    'choices'=>array('0'=>TEXT_NO,'1'=>TEXT_YES),
                    'tooltip'=>TEXT_USE_SEARCH_INFO,
                    'params'=>array('class'=>'form-control input-medium'));
+   
+    $cfg[] = array('title'=>TEXT_DISPLAY_CHOICES_VALUES, 'name'=>'display_choices_values','type'=>'checkbox','tooltip_icon'=>TEXT_DISPLAY_CHOICES_VALUES_TIP);
                 
     //cfg global list if exist
     if(count($choices = global_lists::get_lists_choices())>0)
@@ -64,7 +68,7 @@ class fieldtype_dropdown
     }
     else
     {                    
-      $choices = fields_choices::get_choices($field['id'],(($field['is_required']==0 or strlen($cfg->get('default_text'))>0) ? true:false), $cfg->get('default_text'));
+      $choices = fields_choices::get_choices($field['id'],(($field['is_required']==0 or strlen($cfg->get('default_text'))>0) ? true:false), $cfg->get('default_text'), $cfg->get('display_choices_values'));
       $default_id = fields_choices::get_default_id($field['id']); 
     }
     
@@ -75,15 +79,20 @@ class fieldtype_dropdown
   
   function process($options)
   {
-    global $app_changed_fields, $app_choices_cache;
+    global $app_changed_fields, $app_choices_cache, $app_global_choices_cache;
     
     if(!$options['is_new_item'])
     {
       $cfg = new fields_types_cfg($options['field']['configuration']);
       
-      if($options['value']!=$options['current_field_value'] and $cfg->get('notify_when_changed')==1)
-      {
-        $app_changed_fields[] = array('name'=>$options['field']['name'],'value'=>$app_choices_cache[$options['value']]['name']);
+      if($options['value']>0 and $options['value']!=$options['current_field_value'] and $cfg->get('notify_when_changed')==1)
+      {      	      		
+      	$app_changed_fields[] = array(
+      			'name'=>$options['field']['name'],
+      			'value'=>($cfg->get('use_global_list')>0 ? $app_global_choices_cache[$options['value']]['name'] : $app_choices_cache[$options['value']]['name']),
+      			'fields_id'=>$options['field']['id'],
+      			'fields_value'=>$options['value'],
+      	);      	
       }
     }
   

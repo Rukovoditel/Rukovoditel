@@ -5,6 +5,8 @@ if(!export_templates::has_users_access($current_entity_id,$_GET['templates_id'])
   redirect_to('dashboard/access_forbidden');
 }
 
+$template_info = db_find('app_ext_export_templates',$_GET['templates_id']);
+
 switch($app_module_action)
 {
   case 'print':
@@ -33,8 +35,12 @@ switch($app_module_action)
                  border-collapse: collapse;
                  border-spacing: 0px;                
                }
+      		
+      				' . $template_info['template_css'] . '	
                
             </style>
+      						
+						' . ($template_info['page_orientation']=='landscape' ? '<style type="text/css" media="print"> @page { size: landscape; } </style>':''). '      						
         </head>        
         <body>
          ' . $export_template . '
@@ -76,10 +82,12 @@ switch($app_module_action)
               }
                                           
               c{
-                font-family: STXiheiChinese;
+                font-family: STXihei;
                 font-style: normal;
                 font-weight: 400;
               }
+      		
+      				' . $template_info['template_css'] . '
             </style>
         </head>        
         <body>
@@ -101,9 +109,15 @@ switch($app_module_action)
       
       $filename = str_replace(' ','_',trim($_POST['filename']));
                               
-      require_once("includes/libs/dompdf-0.7.0/autoload.inc.php");    
+      require_once("includes/libs/dompdf-0.8.2/autoload.inc.php");    
                                           
-      $dompdf = new Dompdf\Dompdf();      
+      $dompdf = new Dompdf\Dompdf(); 
+      
+      if($template_info['page_orientation']=='landscape')
+      {
+      	$dompdf->set_paper('letter', 'landscape');
+      }
+      
       $dompdf->load_html($html);
       $dompdf->render();
               
@@ -138,11 +152,18 @@ switch($app_module_action)
                  border-collapse: collapse;
                  border-spacing: 0px;
                }
+    			
+    					' . $template_info['template_css'] . '
+    							
+    					' . ($template_info['page_orientation']=='landscape' ? '
+    							@page section{ size:841.7pt 595.45pt;mso-page-orientation:landscape;margin:1.25in 1.0in 1.25in 1.0in;mso-header-margin:.5in;mso-footer-margin:.5in;mso-paper-source:0; }
+    							div.section {page:section;}
+    							':''). '
         
             </style>
         </head>
-        <body>
-         ' . $export_template . '         
+        <body>    							
+         <div class="section">' . $export_template . '</div>         
         </body>
       </html>
       ';

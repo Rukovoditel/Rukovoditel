@@ -21,7 +21,7 @@
     }
     
     
-    if(!in_array($app_user['group_id'], explode(',',CFG_APP_DISABLE_CHANGE_PWD)) or strlen(CFG_APP_DISABLE_CHANGE_PWD)==0)
+    if((!in_array($app_user['group_id'], explode(',',CFG_APP_DISABLE_CHANGE_PWD)) or strlen(CFG_APP_DISABLE_CHANGE_PWD)==0) and CFG_USE_LDAP_LOGIN_ONLY==false)
     {
     	$menu[] = array('title'=>TEXT_CHANGE_PASSWORD,'url'=>url_for('users/change_password'),'class'=>'fa-unlock-alt');
     }
@@ -96,56 +96,61 @@
   	global $app_user;
   	
   	$custom_entities_menu = array();
-  	$entities_menu_query = db_fetch_all('app_entities_menu','length(entities_list)>0','sort_order, name');
+  	$entities_menu_query = db_fetch_all('app_entities_menu','length(entities_list)>0 or length(reports_list)>0','sort_order, name');
   	while($entities_menu = db_fetch_array($entities_menu_query))
   	{  		
   		$sub_menu = array();
   		
-  		$where_sql = " e.id in (" . $entities_menu['entities_list']. ")";
-  		  		
-  		if($app_user['group_id']==0)
-  		{
-  			$entities_query = db_query("select * from app_entities e where e.id in (" . $entities_menu['entities_list']. ") order by field(e.id," . $entities_menu['entities_list'] . ")");
-  		}
-  		else
-  		{
-  			$entities_query = db_query("select e.* from app_entities e, app_entities_access ea where e.id=ea.entities_id and length(ea.access_schema)>0 and ea.access_groups_id='" . db_input($app_user['group_id']) . "' and e.id in (" . $entities_menu['entities_list']. ") order by field(e.id," . $entities_menu['entities_list'] . ")");
-  		}
+  		if(strlen($entities_menu['entities_list']))
+  		{	
+	  		$where_sql = " e.id in (" . $entities_menu['entities_list']. ")";
+	  		  		
+	  		if($app_user['group_id']==0)
+	  		{
+	  			$entities_query = db_query("select * from app_entities e where e.id in (" . $entities_menu['entities_list']. ") order by field(e.id," . $entities_menu['entities_list'] . ")");
+	  		}
+	  		else
+	  		{
+	  			$entities_query = db_query("select e.* from app_entities e, app_entities_access ea where e.id=ea.entities_id and length(ea.access_schema)>0 and ea.access_groups_id='" . db_input($app_user['group_id']) . "' and e.id in (" . $entities_menu['entities_list']. ") order by field(e.id," . $entities_menu['entities_list'] . ")");
+	  		}
+	  		
+	  		while($entities = db_fetch_array($entities_query))
+	  		{
+	  			if($entities['parent_id']==0)
+	  			{
+	  				$s = array();
+	  		
+	  				$entity_cfg = entities::get_cfg($entities['id']);
+	  				$menu_title = (strlen($entity_cfg['menu_title'])>0 ? $entity_cfg['menu_title'] : $entities['name']);  				
+	  				$menu_icon = (strlen($entity_cfg['menu_icon'])>0 ? $entity_cfg['menu_icon'] : ($entities['id']==1 ? 'fa-user':'fa-reorder'));
+	  				
+	  				$sub_menu[] = array('title'=>$menu_title,'url'=>url_for('items/items','path=' . $entities['id']),'class'=>$menu_icon);
+	  			}
+	  			else
+	  			{
+	  				$reports_info = reports::create_default_entity_report($entities['id'], 'entity_menu');
+	  		
+	  				//check if parent reports was not set
+	  				if($reports_info['parent_id']==0)
+	  				{
+	  					reports::auto_create_parent_reports($reports_info['id']);
+	  				}
+	  		
+	  				$entity_cfg = entities::get_cfg($entities['id']);
+	  				$menu_title = (strlen($entity_cfg['menu_title'])>0 ? $entity_cfg['menu_title'] : $entities['name']);
+	  				$menu_icon = (strlen($entity_cfg['menu_icon'])>0 ? $entity_cfg['menu_icon'] : ($entities['id']==1 ? 'fa-user':'fa-reorder'));
+	  				 
+	  				$sub_menu[] = array('title'=>$menu_title,'url'=>url_for('reports/view','reports_id=' . $reports_info['id']),'class'=>$menu_icon);
+	  			}
+	  		}	  			  			
+  		} 
   		
-  		while($entities = db_fetch_array($entities_query))
-  		{
-  			if($entities['parent_id']==0)
-  			{
-  				$s = array();
-  		
-  				$entity_cfg = entities::get_cfg($entities['id']);
-  				$menu_title = (strlen($entity_cfg['menu_title'])>0 ? $entity_cfg['menu_title'] : $entities['name']);  				
-  				$menu_icon = (strlen($entity_cfg['menu_icon'])>0 ? $entity_cfg['menu_icon'] : ($entities['id']==1 ? 'fa-user':'fa-reorder'));
-  				
-  				$sub_menu[] = array('title'=>$menu_title,'url'=>url_for('items/items','path=' . $entities['id']),'class'=>$menu_icon);
-  			}
-  			else
-  			{
-  				$reports_info = reports::create_default_entity_report($entities['id'], 'entity_menu');
-  		
-  				//check if parent reports was not set
-  				if($reports_info['parent_id']==0)
-  				{
-  					reports::auto_create_parent_reports($reports_info['id']);
-  				}
-  		
-  				$entity_cfg = entities::get_cfg($entities['id']);
-  				$menu_title = (strlen($entity_cfg['menu_title'])>0 ? $entity_cfg['menu_title'] : $entities['name']);
-  				$menu_icon = (strlen($entity_cfg['menu_icon'])>0 ? $entity_cfg['menu_icon'] : ($entities['id']==1 ? 'fa-user':'fa-reorder'));
-  				 
-  				$sub_menu[] = array('title'=>$menu_title,'url'=>url_for('reports/view','reports_id=' . $reports_info['id']),'class'=>$menu_icon);
-  			}
-  		}  
+  		$sub_menu = entities_menu::build_menu($entities_menu['reports_list'],$sub_menu);
   		
   		if(count($sub_menu)>0)
   		{
   			$menu_icon = (strlen($entities_menu['icon'])>0 ? $entities_menu['icon'] : 'fa-reorder');
-  			$menu[] = array('title'=>$entities_menu['name'],'url'=>$sub_menu[0]['url'],'class'=>$menu_icon,'submenu'=>$sub_menu);
+  			$menu[] = array('title'=>$entities_menu['name'],'url'=>$sub_menu[0]['url'] . '&mlevel=0','class'=>$menu_icon,'submenu'=>$sub_menu);
   		}
   	}
   	
@@ -178,6 +183,7 @@
                                       
       $s = array();
       $s[] = array('title'=>TEXT_STANDARD_REPORTS,'url'=>url_for('reports/reports'));
+      $s[] = array('title'=>TEXT_REPORTS_GROUPS,'url'=>url_for('reports_groups/reports'));
       
       if(count($plugin_menu = plugins::include_menu('reports'))>0)
       {
@@ -190,6 +196,23 @@
     return $menu;
   }
   
+  function build_reports_groups_menu($menu)
+  {
+  	global $app_user;
+  	
+  	$reports_query = db_query("select * from app_reports_groups where created_by = '" . $app_user['id'] . "' and in_menu=1 order by sort_order, name");
+  	while($v = db_fetch_array($reports_query))
+  	{
+  		$check_query = db_query("select id from app_entities_menu where find_in_set('dashboard" . $v['id']. "',reports_list)");
+  		if(!$check = db_fetch_array($check_query))
+  		{
+  			$menu[] = array('title'=>$v['name'],'url'=>url_for('dashboard/reports','id=' . $v['id']),'class'=>(strlen($v['menu_icon'])>0 ? $v['menu_icon'] : 'fa-cubes'));
+  		}
+  	}
+  	
+  	return $menu;
+  }
+  
   function build_main_menu()
   {
     global $app_user;
@@ -198,6 +221,8 @@
     
     $menu[] = array('title'=>TEXT_MENU_DASHBOARD,'url'=>url_for('dashboard/'),'class'=>'fa-home');
             
+    $menu = build_reports_groups_menu($menu);
+    
     $menu = build_entities_menu($menu);
     
     $menu = build_custom_entities_menu($menu);
@@ -220,6 +245,7 @@
       $s[] = array('title'=>TEXT_MENU_EMAIL_OPTIONS,'url'=>url_for('configuration/emails'));
       $s[] = array('title'=>TEXT_MENU_ATTACHMENTS,'url'=>url_for('configuration/attachments'));
       $s[] = array('title'=>TEXT_MENU_SECURITY,'url'=>url_for('configuration/security'));
+      $s[] = array('title'=>TEXT_SERVER_LOAD,'url'=>url_for('configuration/server_load'));      
       $s[] = array('title'=>TEXT_MENU_LDAP,'url'=>url_for('configuration/ldap'));
       $s[] = array('title'=>TEXT_MENU_LOGIN_PAGE,'url'=>url_for('configuration/login_page'));			
       $s[] = array('title'=>TEXT_MENU_USERS_REGISTRATION,'url'=>url_for('configuration/users_registration'));
@@ -229,7 +255,7 @@
                    
       $s = array();
       $s[] = array('title'=>TEXT_MENU_ENTITIES_LIST,'url'=>url_for('entities/entities'));
-      $s[] = array('title'=>TEXT_MENU_USERS_ACCESS_GROUPS,'url'=>url_for('configuration/users_groups'));
+      $s[] = array('title'=>TEXT_MENU_USERS_ACCESS_GROUPS,'url'=>url_for('users_groups/users_groups'));
       $s[] = array('title'=>TEXT_MENU_GLOBAL_LISTS,'url'=>url_for('global_lists/lists'));
       $s[] = array('title'=>TEXT_MENU_CONFIGURATION_MENU,'url'=>url_for('entities/menu'));
       $menu[] = array('title'=>TEXT_MENU_APPLICATION_STRUCTURE,'url'=>url_for('entities/'),'class'=>'fa-sitemap','submenu'=>$s);
@@ -248,6 +274,7 @@
           
       //Menu Tools
       $s = array();          
+      $s[] = array('title'=>TEXT_USERS_ALERTS,'url'=>url_for('users_alerts/users_alerts'));
       $s[] = array('title'=>TEXT_MENU_IMPORT_DATA,'url'=>url_for('tools/import_data'));
       $s[] = array('title'=>TEXT_MENU_BACKUP,'url'=>url_for('tools/db_backup'));      
       $s[] = array('title'=>TEXT_MENU_CHECK_VERSION,'url'=>url_for('tools/check_version'));        
@@ -298,8 +325,7 @@
       {
         $html .= '<li ' .  ($is_active ? 'class="active"':'') . ' >';
       }
-      
-      
+                  
       $url = '';
       
       if(isset($v['url']))
@@ -379,9 +405,9 @@
           $url_list = array();
           $url_list[] = $v['url'];
           $url_list = getSidebarLevelUrls($v['submenu'],$url_list);
-                                        
+                                                            
           if($menu_level==$check_level and in_array($current_url,$url_list) and in_array($menu_url,$url_list))
-          {                                  
+          {           	          	
             return true;
           } 
           

@@ -37,9 +37,12 @@ else
 		</div>
 	</div>
 
-<?php echo form_tag('export_form', url_for('items/export','action=export&path=' . $_GET['path']),array('class'=>'form-inline')) . input_hidden_tag('reports_id',$_GET['reports_id']) ?>  
+<?php echo form_tag('export_form', url_for('items/export','path=' . $_GET['path']),array('class'=>'form-inline'))  . input_hidden_tag('action','export') . input_hidden_tag('reports_id',$_GET['reports_id']) ?>  
 <p>
 <?php
+
+
+$exclude_types = ($app_entities_cache[$current_entity_id]['parent_id']==0 ? ",'fieldtype_parent_item_id'":'');
 
 $fields_access_schema = users::get_fields_access_schema($current_entity_id,$app_user['group_id']);
 
@@ -48,7 +51,7 @@ while($tabs = db_fetch_array($tabs_query))
 {
   $fileds_html = '';
   
-  $fields_query = db_query("select f.* from app_fields f where  f.type not in ('fieldtype_action') and f.entities_id='" . db_input($current_entity_id) . "' and forms_tabs_id='" . db_input($tabs['id']) . "' order by f.sort_order, f.name");
+  $fields_query = db_query("select f.*,if(f.type in ('fieldtype_id','fieldtype_date_added','fieldtype_created_by'),-1,f.sort_order) as field_sort_order from app_fields f where  f.type not in ('fieldtype_action' {$exclude_types}) and f.entities_id='" . db_input($current_entity_id) . "' and forms_tabs_id='" . db_input($tabs['id']) . "' order by field_sort_order, f.name");
   while($v = db_fetch_array($fields_query))
   {      
     //check field access
@@ -95,7 +98,12 @@ while($tabs = db_fetch_array($tabs_query))
 <br>
 	
 	<div>
-		<?php echo submit_tag(TEXT_BUTTON_EXPORT) ?>
+		<?php 
+			echo '
+				<button type="button" class="btn btn-primary" id="btn_export"><i class="fa fa-file-excel-o"></i> ' . TEXT_BUTTON_EXPORT . '</button> 
+				<button type="button" class="btn btn-primary" id="btn_export_print"><i class="fa fa-print"></i> ' . TEXT_PRINT . '</button>'; 
+		?>	
+		
 	</div>
 
 

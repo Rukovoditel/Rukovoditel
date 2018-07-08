@@ -36,7 +36,12 @@
 
 
   $(function() { 
-    $('#reports_filters').validate();
+    $('#reports_filters').validate({
+				submitHandler: function(form){
+					app_prepare_modal_action_loading(form)
+					form.submit();
+				}
+      });
     
     load_fitlers_options($('#fields_id').val());                                                                      
   });

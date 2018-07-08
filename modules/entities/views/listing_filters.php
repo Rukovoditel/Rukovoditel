@@ -11,7 +11,8 @@
 <thead>
   <tr>
     <th><?php echo TEXT_ACTION ?></th>        
-    <th width="100%"><?php echo TEXT_FIELD ?></th>    
+    <th width="100%"><?php echo TEXT_FIELD ?></th>
+    <th><?php echo TEXT_FILTERS_CONDITION ?></th>    
     <th><?php echo TEXT_VALUES ?></th>
             
   </tr>
@@ -24,7 +25,8 @@
 ?>
   <tr>
     <td style="white-space: nowrap;"><?php echo button_icon_delete(url_for('entities/listing_filters_delete','id=' . $v['id'] . '&reports_id=' . $reports_info['id']. '&entities_id=' . $_GET['entities_id'])) . ' ' . button_icon_edit(url_for('entities/listing_filters_form','id=' . $v['id'] . '&reports_id=' . $reports_info['id']. '&entities_id=' . $_GET['entities_id']))  ?></td>    
-    <td><?php echo fields_types::get_option($v['type'],'name',$v['name']) ?></td>    
+    <td><?php echo fields_types::get_option($v['type'],'name',$v['name']) ?></td>
+    <td><?php echo reports::get_condition_name_by_key($v['filters_condition']) ?></td>    
     <td class="nowrap"><?php echo reports::render_filters_values($v['fields_id'],$v['filters_values'],'<br>',$v['filters_condition']) ?></td>            
   </tr>
 <?php endwhile?>  

@@ -6,7 +6,7 @@ class fieldtype_user_skin
   
   function __construct()
   {
-    $this->options = array('name' => TEXT_FIELDTYPE_USER_SKIN_TITLE);
+    $this->options = array('name' => TEXT_FIELDTYPE_USER_SKIN_TITLE,'title' => TEXT_FIELDTYPE_USER_SKIN_TITLE);
   }
   
   function render($field,$obj,$params = array())

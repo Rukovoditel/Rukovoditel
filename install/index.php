@@ -1,7 +1,7 @@
 <?php
   error_reporting(E_ALL & ~E_NOTICE);
   
-  define('PROJECT_VERSION','1.9');
+  define('PROJECT_VERSION','2.2.1');
   
 // set default timezone if none exists (PHP 5.3 throws an E_WARNING)
 	define('CFG_TIME_ZONE','Europe/Moscow');

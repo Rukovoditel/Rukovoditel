@@ -31,6 +31,13 @@ class fieldtype_textarea_wysiwyg
   
   function output($options)
   {
-    return auto_link_text($options['value']);
+  	if(isset($options['is_export']))
+  	{  		  		
+  		return (!isset($options['is_print']) ? str_replace(array('&lt;','&gt;'),array('<','>'),$options['value']) : $options['value']);
+  	}
+  	else
+  	{
+    	return auto_link_text($options['value']);
+  	}
   }
 }

@@ -2,14 +2,17 @@
 
 // secure webserver
   define('ENABLE_SSL', false);
-  
+    
 //Configure server host to build urls correctly in cron
 //Enter [http or https]+[domainname]+[catalog] for example: https://mycompany.com/mypm/
   define('CRON_HTTP_SERVER_HOST','http://localhost/rukovoditel/product_v1.9/');  
     
 //developer mode
   define('DEV_MODE',false); //in developer mode DB and PHP logs stored in "log" folder
-       
+  
+//Use LDAP login only. Default login page will be disabled
+	define('CFG_USE_LDAP_LOGIN_ONLY',false);
+           
 //list of available plugins separated by comma
   define('AVAILABLE_PLUGINS','ext');
     
@@ -22,6 +25,7 @@
   define('DIR_FS_USERS',DIR_FS_UPLOADS . 'users/');
   define('DIR_FS_BACKUPS',DIR_FS_CATALOG . 'backups/');
   define('DIR_FS_TMP',DIR_FS_CATALOG . 'tmp/');
+  define('DIR_FS_CACHE',DIR_FS_CATALOG . 'cache/');
 
 //// * DIR_WS_* = Webserver directories (virtual/URL)
   define('DIR_WS_UPLOADS','uploads/');
@@ -46,3 +50,7 @@
   define('SESSION_FORCE_COOKIE_USE',true);
   define('SESSION_COOKIE_DOMAIN','');  
   define('SESSION_COOKIE_PATH','');   
+  
+//force set_mode
+	define('DB_FORCE_SQL_MODE',true); //true or false
+	define('DB_SET_SQL_MODE',''); //to remove STRICT_TRANS_TABLES

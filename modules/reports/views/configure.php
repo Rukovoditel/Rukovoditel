@@ -5,14 +5,32 @@
   {
     echo form_tag('sorting_form', url_for('ext/common_reports/reports'));
   }
+  elseif(strstr($app_redirect_to,'funnelchart'))
+  {
+  	$id = str_replace('funnelchart','',$app_redirect_to);
+  	echo form_tag('sorting_form', url_for('ext/funnelchart/view','id=' . $id . (strlen($app_path) ? '&path=' . $app_path:'')));
+  }
   elseif(isset($_GET['path']))
   {
     echo form_tag('sorting_form', url_for('items/','path=' . $_GET['path']));
+  }
+  elseif($app_redirect_to == 'parent_infopage_filters')
+  {
+  	echo form_tag('sorting_form', url_for('entities/parent_infopage_filters','entities_id=' . $reports_info['entities_id']));
+  }
+  elseif($app_redirect_to == 'infopage_entityfield_filters')
+  {
+  	echo form_tag('sorting_form', url_for('entities/infopage_entityfield_filters','entities_id=' . $reports_info['entities_id'] . '&related_entities_id=' . $_GET['related_entities_id'] . '&fields_id=' . $_GET['fields_id']));
+  }
+  elseif($app_redirect_to == 'related_records_field_settings')
+  {
+  	echo form_tag('sorting_form', url_for('entities/fields_settings','entities_id=' . $_GET['entities_id'] . '&fields_id=' . $_GET['fields_id']));
   }
   else
   { 
     echo form_tag('sorting_form', url_for('reports/view','reports_id=' . $reports_info['id']));
   } 
+    
   
   $fields_access_schema = users::get_fields_access_schema($reports_info['entities_id'],$app_user['group_id']);
 ?>
@@ -62,10 +80,10 @@
 <div class="cfg_listing">        
 <ul id="fields_excluded_from_listing" class="sortable">
 <?php
-$fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where " . (count($fields_in_listing)>0 ? "f.id not in (" . implode(',',$fields_in_listing). ") and " : "") . "  f.entities_id='" . db_input($reports_info['entities_id']) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
+$exclude_fields_types_sql = " and f.type not in ('fieldtype_section','fieldtype_mapbbcode')";
+$fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where " . (count($fields_in_listing)>0 ? "f.id not in (" . implode(',',$fields_in_listing). ") and " : "") . "  f.entities_id='" . db_input($reports_info['entities_id']) . "' and f.forms_tabs_id=t.id {$exclude_fields_types_sql} order by t.sort_order, t.name, f.sort_order, f.name");
 while($v = db_fetch_array($fields_query))
 {
-
   //check field access
   if(isset($fields_access_schema[$v['id']]))
   {

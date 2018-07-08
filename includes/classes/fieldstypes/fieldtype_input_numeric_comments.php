@@ -17,11 +17,10 @@ class fieldtype_input_numeric_comments
     $cfg[] = array('title'=>tooltip_icon(TEXT_CALCULATE_TOTALS_INFO) . TEXT_CALCULATE_TOTALS, 'name'=>'calclulate_totals','type'=>'checkbox');
     $cfg[] = array('title'=>TEXT_CALCULATE_AVERAGE_VALUE, 'name'=>'calculate_average','type'=>'checkbox');
     
-    $cfg[] = array('title'=>TEXT_DEFAULT_VALUE,
-    		'name'=>'default_value',
-    		'type'=>'input',
-    		'tooltip_icon'=>TEXT_DEFAULT_VALUE_INFO,
-    		'params'=>array('class'=>'form-control input-small'));
+    $cfg[] = array('title'=>TEXT_DEFAULT_VALUE,'name'=>'default_value','type'=>'input','tooltip_icon'=>TEXT_DEFAULT_VALUE_INFO,'params'=>array('class'=>'form-control input-small'));
+    
+    $cfg[] = array('title'=>TEXT_PREFIX,'name'=>'prefix','type'=>'input','params'=>array('class'=>'form-control input-small'));
+    $cfg[] = array('title'=>TEXT_SUFFIX,'name'=>'suffix','type'=>'input','params'=>array('class'=>'form-control input-small'));
     
     return $cfg;
   }
@@ -74,27 +73,32 @@ class fieldtype_input_numeric_comments
   function output($options)
   {
   	//return non-formated value if export
-  	if(isset($options['is_export']))
+  	if(isset($options['is_export']) and !isset($options['is_print']))
   	{
   		return $options['value'];
   	}
-  	
+  	  	  	
     $cfg = new fields_types_cfg($options['field']['configuration']);
                     
     if(strlen($cfg->get('number_format'))>0 and strlen($options['value'])>0)
     {
       $format = explode('/',str_replace('*','',$cfg->get('number_format')));
             
-      return number_format($options['value'],$format[0],$format[1],$format[2]);
+      $value = number_format($options['value'],$format[0],$format[1],$format[2]);
     }
     elseif(strstr($options['value'],'.'))
-    {
-      $options['value'] = number_format((float)$options['value'],2,'.','');
+    {    	    	
+      $value = number_format((float)$options['value'],2,'.','');
     }
     else
     {
-      return $options['value'];
+      $value = $options['value'];
     }
+    
+    //add prefix and sufix
+    $value = (strlen($value) ? $cfg->get('prefix') . $value . $cfg->get('suffix') : '');
+    
+    return $value;
   }
   
   function reports_query($options)
@@ -102,7 +106,7 @@ class fieldtype_input_numeric_comments
     $filters = $options['filters'];
     $sql_query = $options['sql_query'];
                 
-    $sql = reports::prepare_numeric_sql_filters($filters);
+    $sql = reports::prepare_numeric_sql_filters($filters, $options['prefix']);
     
     if(count($sql)>0)
     {

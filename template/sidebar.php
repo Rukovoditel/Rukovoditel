@@ -25,6 +25,7 @@
       echo $html;
     }
   }
+  
 ?>          
 					<!-- BEGIN SIDEBAR TOGGLER BUTTON -->
 					<div class="sidebar-toggler">
@@ -32,6 +33,7 @@
 					<div class="clearfix">
 					</div>
 					<!-- BEGIN SIDEBAR TOGGLER BUTTON -->
+					
 				</li>
         <li>
         

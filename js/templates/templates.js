@@ -10,12 +10,12 @@ function use_entity_template(templates_id)
     fields_value = $(this).html();
     
     //reset field type for some field types 
-    if((fields_type=='fieldtype_entity' || fields_type=='fieldtype_users') && $('.field_'+fields_id).attr('type')=='checkbox')
+    if((fields_type=='fieldtype_entity' || fields_type=='fieldtype_users' || fields_type=='fieldtype_grouped_users') && $('.field_'+fields_id).attr('type')=='checkbox')
     {
       fields_type = 'fieldtype_checkboxes';
     }
     
-    if((fields_type=='fieldtype_entity' || fields_type=='fieldtype_users') && $('.field_'+fields_id).attr('multiple')=='multiple')
+    if((fields_type=='fieldtype_entity' || fields_type=='fieldtype_users' || fields_type=='fieldtype_grouped_users') && $('.field_'+fields_id).attr('multiple')=='multiple')
     {
       fields_type = 'fieldtype_dropdown_multiple';
     }

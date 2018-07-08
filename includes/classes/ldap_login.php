@@ -13,6 +13,8 @@ class ldap_login
     $this->config['ldap_uid']         = CFG_LDAP_UID;
     $this->config['ldap_user_filter'] = CFG_LDAP_USER;
     $this->config['ldap_email']       = CFG_LDAP_EMAIL_ATTRIBUTE;
+    $this->config['ldap_firstname']   = CFG_LDAP_FIRSTNAME_ATTRIBUTE;
+    $this->config['ldap_lastname']    = CFG_LDAP_LASTNAME_ATTRIBUTE;    
     $this->config['ldap_user']        = CFG_LDAP_USER_DN;
     $this->config['ldap_password']    = CFG_LDAP_PASSWORD;
   }
@@ -51,14 +53,24 @@ class ldap_login
   		}
   	}      
   
-  	// ldap_connect only checks whether the specified server is valid, so the connection might still fail
+  	// ldap_connect only checks whether the specified server is valid, so the connection might still fail  	  	  	
+  	$search_filters = array('cn',htmlspecialchars_decode($this->config['ldap_uid']));
+  	
+  	if(strlen($this->config['ldap_email']))
+  		$search_filters[] = htmlspecialchars_decode($this->config['ldap_email']);
+  			  			
+  	if(strlen($this->config['ldap_firstname']))
+  		$search_filters[] = htmlspecialchars_decode($this->config['ldap_firstname']);
+  		
+  	if(strlen($this->config['ldap_lastname']))
+  		$search_filters[] = htmlspecialchars_decode($this->config['ldap_lastname']);
+  	
+  	  		  			  				  	  	  	    	
   	$search = @ldap_search(
   		$ldap,
   		htmlspecialchars_decode($this->config['ldap_base_dn']),
   		$this->ldap_user_filter($username),
-  		(strlen($this->config['ldap_email'])==0) ?
-  			array('cn',htmlspecialchars_decode($this->config['ldap_uid'])) :
-  			array('cn',htmlspecialchars_decode($this->config['ldap_uid']), htmlspecialchars_decode($this->config['ldap_email'])),
+  		$search_filters,
   		0,
   		1
   	);
@@ -69,10 +81,12 @@ class ldap_login
   	{
   		if (@ldap_bind($ldap, $ldap_result[0]['dn'], htmlspecialchars_decode($password)))
   		{
-  			@ldap_close($ldap);  			  			  			
-  			
+  			  			  			  			  			
         $userName = '';
         $userEmail = '';
+        $firstname = '';
+        $lastname = '';
+        $group = '';
         
         if(isset($ldap_result[0][htmlspecialchars_decode($this->config['ldap_email'])][0]))
         {
@@ -83,8 +97,26 @@ class ldap_login
         {
           $userName = $ldap_result[0]['cn'][0];
         }
+        
+        if(isset($ldap_result[0][htmlspecialchars_decode($this->config['ldap_firstname'])][0]))
+        {
+        	$firstname = $ldap_result[0][htmlspecialchars_decode($this->config['ldap_firstname'])][0];
+        }
+        
+        if(isset($ldap_result[0][htmlspecialchars_decode($this->config['ldap_lastname'])][0]))
+        {
+        	$lastname = $ldap_result[0][htmlspecialchars_decode($this->config['ldap_lastname'])][0];
+        }
+        
+
   		  			
-  			return array('status'=>true, 'name'=>$userName,'email'=>$userEmail);
+  			return array(
+  					'status'=>true, 
+  					'name'=>$userName,
+  					'email'=>$userEmail,
+  					'firstname'=>$firstname,
+  					'lastname'=>$lastname,
+  					'group'=>$this->ldap_get_user_group($ldap,$username));
   		}
   		else
   		{
@@ -127,6 +159,33 @@ class ldap_login
   function ldap_escape($string)
   {
   	return str_replace(array('*', '\\', '(', ')'), array('\\*', '\\\\', '\\(', '\\)'), $string);
+  }
+  
+  /**
+   * check all user groups wehere ldap filter exists for user membership  
+   */
+  function ldap_get_user_group($ldap,$username)
+  {  
+  	$groups_query = db_query("select * from app_access_groups where length(ldap_filter)>0 ORDER BY sort_order");      	  	
+  	while($groups = db_fetch_array($groups_query))
+  	{    
+  		$filter="(&(".htmlspecialchars_decode($this->config['ldap_uid'])."=".$username.")".$groups['ldap_filter'].")";
+    
+  		$search = @ldap_search(
+  				$ldap,
+  				htmlspecialchars_decode($this->config['ldap_base_dn']),
+  				$filter
+  				);
+  		
+  		$ldap_result = @ldap_get_entries($ldap, $search);
+  
+  		if (is_array($ldap_result) && sizeof($ldap_result) > 1)
+  		{
+  			return $groups['id'];  			
+  		}  
+  	}  
+  
+  	return false;  
   }
 
 }

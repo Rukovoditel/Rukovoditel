@@ -2,6 +2,18 @@
 
 class entities
 {
+	public static function get_cache()
+	{
+		$cache = array();
+		$entities_query = db_query("select * from app_entities");
+		while($entities = db_fetch_array($entities_query))
+		{
+			$cache[$entities['id']] = $entities;
+		}
+		
+		return $cache;
+	}	
+	
 	public static function has_subentities($entities_id)
 	{
 		return db_count('app_entities',$entities_id,'parent_id');
@@ -31,12 +43,65 @@ class entities
     //delete notifications
     db_query("delete from app_users_notifications where entities_id='" . $id . "'");
     
+    //access rules
+    db_query("delete from app_access_rules where entities_id='" . db_input($id) ."'");
+    db_query("delete from app_access_rules_fields where entities_id='" . db_input($id) ."'");
+    
     //delete timers
     if(class_exists('timer'))
     {
     	db_query("delete from app_ext_timer where entities_id='" . $id . "'");
     }
   }
+  
+  public static function get_flowchart_shcema($parent_id=0,$tree=array(),$level=0, $x=0, $y=0)
+  {  	  	
+  	$entities_query = db_query("select * from app_entities where parent_id='" . $parent_id . "' order by sort_order, name");  	
+  
+  	while($entities = db_fetch_array($entities_query))
+  	{
+  		$tree['tree'][] = array(
+  				'id'=>$entities['id'],
+  				'parent_id'=>$entities['parent_id'],
+  				'name'=>$entities['name'],
+  				'notes'=>$entities['notes'],
+  				'sort_order'=>$entities['sort_order'],
+  				'level'=>$level,  				
+  				'x' => $x,
+  				'y' => $y,
+  		);
+  		
+  		$tree['y'] = $y;
+  		  		  
+  		$tree = entities::get_flowchart_shcema($entities['id'],$tree,$level+1,$x+130,$y);
+  		
+  		$y = $tree['y'];
+  		
+  		$count_fields = 0;
+  		$check_fields_query = db_query("select * from app_fields where entities_id = '" . $entities['id'] . "' and type in ('fieldtype_users','fieldtype_grouped_users','fieldtype_entity','fieldtype_related_records','fieldtype_formula')");
+  		while($check_fields = db_fetch_array($check_fields_query))
+  		{
+  			if($check_fields['type']=='fieldtype_formula')
+  			{
+  				$cfg = new fields_types_cfg($check_fields['configuration']);
+  				
+  				if(strstr($cfg->get('formula'),'{'))
+  				{
+  					$count_fields++;
+  				}
+  			}	
+  			else
+  			{
+  				$count_fields++;
+  			}
+  			
+  		}
+  		
+  		$y+= 30+($count_fields*11);
+  	}
+  
+  	return $tree;
+  }  
   
   public static function insert_default_form_tab($id)
   {
@@ -111,7 +176,9 @@ class entities
                       'email_subject_new_item',
                       'email_subject_updated_item',
                       'email_subject_new_comment',
-                      'number_fixed_field_in_listing');
+                      'number_fixed_field_in_listing',
+    									'heading_width_based_content',
+    );
     
     foreach($cfg_keys as $k)
     {
@@ -214,7 +281,7 @@ class entities
   }
   
   
-  public static function get_tree($parent_id=0,$tree=array(),$level=0,$path = array())
+  public static function get_tree($parent_id=0,$tree=array(),$level=0,$path = array(), $skip = array())
   {
     global $app_user;
       
@@ -229,6 +296,8 @@ class entities
     
     while($entities = db_fetch_array($entities_query))
     {
+    	if(in_array($entities['id'],$skip)) continue;
+    	
       $tree[] = array('id'=>$entities['id'],
                       'name'=>$entities['name'],
       								'notes'=>$entities['notes'],	
@@ -245,9 +314,14 @@ class entities
   
   public static function get_parents($entities_id, $parents = array())
   {
-    $entities_query = db_query("select * from app_entities where id='" . $entities_id . "'");
-    if($entities = db_fetch_array($entities_query))
+  	global $app_entities_cache;
+  	
+    //$entities_query = db_query("select * from app_entities where id='" . $entities_id . "'");
+    //if($entities = db_fetch_array($entities_query))
+    if(isset($app_entities_cache[$entities_id]))
     {
+    	$entities = $app_entities_cache[$entities_id];
+    	
       if($entities['parent_id']>0)
       {
         $parents[] = $entities['parent_id'];
@@ -263,12 +337,12 @@ class entities
   {
     $sql = '
       CREATE TABLE IF NOT EXISTS app_entity_' . (int)$entities_id . ' (
-        id int(11) NOT NULL auto_increment,
-        parent_id int(11) default 0,
-        parent_item_id int(11) default 0,
-        linked_id int(11) default 0,
-        date_added int(11) NOT NULL,
-        created_by int(11) default NULL,
+        id int(11) UNSIGNED NOT NULL auto_increment,
+        parent_id int(11) UNSIGNED default 0,
+        parent_item_id int(11) UNSIGNED default 0,
+        linked_id int(11) UNSIGNED default 0,
+        date_added int(11)UNSIGNED NOT NULL,
+        created_by int(11) UNSIGNED default NULL,
         sort_order int(11) default 0,
         PRIMARY KEY  (`id`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -287,10 +361,10 @@ class entities
     
     $sql = '
     		CREATE TABLE IF NOT EXISTS app_entity_' . (int)$entities_id . '_values (
-				  id int(11) NOT NULL AUTO_INCREMENT,
-				  items_id int(11) NOT NULL,
-				  fields_id int(11) NOT NULL,
-				  value int(11) NOT NULL,
+				  id int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+				  items_id int(11) UNSIGNED NOT NULL,
+				  fields_id int(11) UNSIGNED NOT NULL,
+				  value int(11) UNSIGNED NOT NULL,
 				  PRIMARY KEY (`id`),
 				  KEY `idx_items_id` (`items_id`),
 				  KEY `idx_fields_id` (`fields_id`),
@@ -317,10 +391,11 @@ class entities
   {
   	switch($type)
   	{
+  		case 'fieldtype_js_formula':
   		case 'fieldtype_input_numeric':
   		case 'fieldtype_input_numeric_comments':
   			$db_type = 'VARCHAR(64)';
-  			break;
+  			break;  		  			
   		case 'fieldtype_boolean':
   			$db_type = 'VARCHAR(8)';
   			break;
@@ -329,7 +404,7 @@ class entities
   		case 'fieldtype_dropdown':
   		case 'fieldtype_radioboxes':
   		case 'fieldtype_progress':
-  			$db_type = 'INT(11)';
+  			$db_type = 'INT(11) UNSIGNED';
   			break;
   		case 'fieldtype_input_vpic':
   		case 'fieldtype_barcode':
@@ -341,6 +416,7 @@ class entities
   		case 'fieldtype_related_records':
   		case 'fieldtype_formula':
   		case 'fieldtype_qrcode':
+  		case 'fieldtype_section':
   			$db_type = 'VARCHAR(1)';
   			break;
   		default:

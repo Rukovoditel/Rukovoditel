@@ -28,7 +28,7 @@
 <link rel="stylesheet" type="text/css" href="template/plugins/bootstrap-datetimepicker/css/datetimepicker.css"/>
 <!-- END PAGE LEVEL SCRIPTS -->
 <!-- BEGIN THEME STYLES -->
-<link href="template/css/style-conquer.css" rel="stylesheet" type="text/css"/>
+<link href="template/css/style-conquer.css?v=2" rel="stylesheet" type="text/css"/>
 <link href="template/css/style.css?v=2" rel="stylesheet" type="text/css"/>
 <link href="template/css/style-responsive.css?v=2" rel="stylesheet" type="text/css"/>
 <link href="template/css/plugins.css" rel="stylesheet" type="text/css"/>
@@ -37,10 +37,9 @@
 <link href="js/uploadifive/uploadifive.css" rel="stylesheet" media="screen">
 <link href="js/chosen/chosen.css" rel="stylesheet" media="screen">
 <link rel="stylesheet" type="text/css" href="template/plugins/jquery-nestable/jquery.nestable.css"/>
+<link rel="stylesheet" type="text/css" media="screen" href="template/plugins/ckeditor/plugins/codesnippet/lib/highlight/styles/default.css" />
 
 <link rel="stylesheet" type="text/css" href="js/DataTables-1.10.15/media/css/dataTables.bootstrap.css" />
-
-
 
 <?php require('js/mapbbcode-master/includes.css.php'); ?>
 
@@ -126,7 +125,8 @@
 			<div id="ajax-modal" class="modal fade" tabindex="-1" data-replace="true" data-keyboard="false" data-backdrop="static" data-focus-on=".autofocus"></div>			
 			<!-- BEGIN PAGE CONTENT-->
 			<div class="row">
-				<div class="col-md-12">                
+				<div class="col-md-12">
+				
 <?php 
 //check install dir
   if(is_dir('install'))
@@ -136,13 +136,17 @@
 
 //output alerts if they exists.
   echo $alerts->output(); 
+  
+//output users alers
+	echo users_alerts::output();
         
 //include module views    
   if(is_file($path = $app_plugin_path . 'modules/' . $app_module . '/views/' . $app_action . '.php'))
   {    
     require($path);
-  }      
-?>					                       
+  }    
+?>	
+	          			                       
 				</div>
 			</div>
 			<!-- END PAGE CONTENT-->
@@ -174,7 +178,7 @@
 <script src="template/plugins/uniform/jquery.uniform.min.js" type="text/javascript"></script>
 <!-- END CORE PLUGINS -->
 <!-- BEGIN PAGE LEVEL PLUGINS -->
-<script type="text/javascript" src="template/plugins/ckeditor/ckeditor.js?v=4.5.7"></script>
+<script type="text/javascript" src="template/plugins/ckeditor/ckeditor.js?v=4.5.7.01"></script>
 <script type="text/javascript" src="template/plugins/select2/select2.min.js"></script>
 <script type="text/javascript" src="template/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js"></script>
 <script type="text/javascript" src="template/plugins/bootstrap-datetimepicker/js/bootstrap-datetimepicker.js"></script>
@@ -183,18 +187,26 @@
 <script type="text/javascript" src="template/plugins/bootstrap-colorpicker/js/bootstrap-colorpicker.js"></script>
 <script type="text/javascript" src="template/plugins/jquery-nestable/jquery.nestable.js"></script>
 <script type="text/javascript" src="js/simple-color-picker/jquery.colorPicker.js"></script>
-<script type="text/javascript" src="js/uploadifive/jquery.uploadifive.min.js"></script>
+<script type="text/javascript" src="js/uploadifive/jquery.uploadifive.min.js?v=1.2.2"></script>
 <script type="text/javascript" src="js/chosen/chosen.jquery.min.js"></script>
-<script type="text/javascript" src="js/highcharts/highcharts.js"></script>
-<script type="text/javascript" src="js/highcharts/modules/exporting.js"></script>
+<script type="text/javascript" src="js/chosen/jquery-chosen-sortable.min.js"></script>
+<script type="text/javascript" src="js/chosen/chosen-order/chosen.order.jquery.min.js"></script>
 <script type="text/javascript" src="js/maskedinput/jquery.maskedinput.js"></script>
 <script type="text/javascript" src="js/totop/jquery.ui.totop.js" ></script>
+<script type="text/javascript" src="js/jquery-number-master/jquery.number.min.js" ></script>
+<script type="text/javascript" src="template/plugins/ckeditor/plugins/codesnippet/lib/highlight/highlight.pack.js"></script>
 <!-- END PAGE LEVEL PLUGINS -->
 
 <?php if($app_module_path=='items/info') require(component_path('dashboard/data_tables')); ?>
 
 <?php require('js/mapbbcode-master/includes.js.php'); ?>
 
+<?php 
+	if(is_ext_installed())
+	{
+		echo smart_input::render_js_includes();	
+	}
+?>
 
 <!-- BEGIN PAGE LEVEL SCRIPTS -->
 <script src="template/scripts/app.js" type="text/javascript"></script>
@@ -204,32 +216,33 @@
 
 <script>
 jQuery(document).ready(function() {     
-  App.init();
+    
+	$.fn.datepicker.dates['en'] = {
+	    days: [<?php echo TEXT_DATEPICKER_DAYS ?>],
+	    daysShort: [<?php echo TEXT_DATEPICKER_DAYSSHORT ?>],
+	    daysMin: [<?php echo TEXT_DATEPICKER_DAYSMIN ?>],
+	    months: [<?php echo TEXT_DATEPICKER_MONTHS ?>],
+	    monthsShort: [<?php echo TEXT_DATEPICKER_MONTHSSHORT ?>],
+	    today: "<?php echo TEXT_DATEPICKER_TODAY ?>"    
+	};  
+	
+	$.fn.datetimepicker.dates['en'] = {
+	    days: [<?php echo TEXT_DATEPICKER_DAYS ?>],
+	    daysShort: [<?php echo TEXT_DATEPICKER_DAYSSHORT ?>],
+	    daysMin: [<?php echo TEXT_DATEPICKER_DAYSMIN ?>],
+	    months: [<?php echo TEXT_DATEPICKER_MONTHS ?>],
+	    monthsShort: [<?php echo TEXT_DATEPICKER_MONTHSSHORT ?>],
+	    meridiem: ["am", "pm"],
+			suffix: ["st", "nd", "rd", "th"],
+	    today: "<?php echo TEXT_DATEPICKER_TODAY ?>"    
+	};
+	
+	App.init();
+	
+	rukovoditel_app_init();
   
-  rukovoditel_app_init();
-  
-$.fn.datepicker.dates['en'] = {
-    days: [<?php echo TEXT_DATEPICKER_DAYS ?>],
-    daysShort: [<?php echo TEXT_DATEPICKER_DAYSSHORT ?>],
-    daysMin: [<?php echo TEXT_DATEPICKER_DAYSMIN ?>],
-    months: [<?php echo TEXT_DATEPICKER_MONTHS ?>],
-    monthsShort: [<?php echo TEXT_DATEPICKER_MONTHSSHORT ?>],
-    today: "<?php echo TEXT_DATEPICKER_TODAY ?>"    
-};  
-
-$.fn.datetimepicker.dates['en'] = {
-    days: [<?php echo TEXT_DATEPICKER_DAYS ?>],
-    daysShort: [<?php echo TEXT_DATEPICKER_DAYSSHORT ?>],
-    daysMin: [<?php echo TEXT_DATEPICKER_DAYSMIN ?>],
-    months: [<?php echo TEXT_DATEPICKER_MONTHS ?>],
-    monthsShort: [<?php echo TEXT_DATEPICKER_MONTHSSHORT ?>],
-    meridiem: ["am", "pm"],
-		suffix: ["st", "nd", "rd", "th"],
-    today: "<?php echo TEXT_DATEPICKER_TODAY ?>"    
-};
-  
-  
-  <?php if(strlen($app_current_version)==0) echo "$.ajax({url: '" . url_for("dashboard/check_project_version") ."'});" ?>
+	
+  <?php if(strlen($app_current_version)==0 and CFG_DISABLE_CHECK_FOR_UPDATES==0) echo "$.ajax({url: '" . url_for("dashboard/check_project_version") ."'});" ?>
 });
 </script>
 

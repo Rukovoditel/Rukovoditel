@@ -6,7 +6,7 @@ class fieldtype_user_language
   
   function __construct()
   {
-    $this->options = array('name' => TEXT_FIELDTYPE_USER_LANGUAGE_TITLE);
+    $this->options = array('name' => TEXT_FIELDTYPE_USER_LANGUAGE_TITLE,'title' => TEXT_FIELDTYPE_USER_LANGUAGE_TITLE);
   }
   
   function render($field,$obj,$params = array())

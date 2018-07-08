@@ -37,7 +37,7 @@ function load_fitlers_options(fields_id)
   {
     $('#filters_options').html('<div class="ajax-loading"></div>');
     
-    $('#filters_options').load('<?php echo url_for("reports/filters_options")?>',{fields_id:fields_id, id:'<?php echo $obj["id"] ?>'},function(response, status, xhr) {
+    $('#filters_options').load('<?php echo url_for("reports/filters_options")?>',{is_internal:1,fields_id:fields_id, id:'<?php echo $obj["id"] ?>'},function(response, status, xhr) {
       if (status == "error") {                                 
          $(this).html('<div class="alert alert-error"><b>Error:</b> ' + xhr.status + ' ' + xhr.statusText+'<div>'+response +'</div></div>')                    
       }

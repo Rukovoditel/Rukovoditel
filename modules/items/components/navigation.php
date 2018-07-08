@@ -19,7 +19,16 @@
     		<span class="fa fa-bar fa-align-justify"></span>
     		<span class="fa fa-bar"></span>
   		</button>
-  		<a class="navbar-brand <?php echo ($navbar[0]['selected_id'] == $current_entity_id ? 'selected':'')?>" href="<?php echo $navbar[0]['url'] ?>"><?php echo $navbar[0]['title'] ?></a>
+  		<?php
+  		  if(isset($navbar[0]['url']))
+  		  {
+  		  	echo '<a class="navbar-brand ' .  ($navbar[0]['selected_id'] == $current_entity_id ? 'selected':'') . '" href="' . $navbar[0]['url'] . '">' . $navbar[0]['title'] . '</a>';
+  		  }
+  		  else
+  		  {
+  		  	echo '<a class="navbar-brand ' .  ($navbar[0]['selected_id'] == $current_entity_id ? 'selected':'') . '" href="#" onClick="return false">' . $navbar[0]['title'] . '</a>';
+  		  }
+  		?>
   	</div>
   	<!-- Collect the nav links, forms, and other content for toggling -->
   	<div class="collapse navbar-collapse navbar-ex1-collapse">

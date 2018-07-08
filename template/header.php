@@ -18,6 +18,12 @@
     <ul class="nav navbar-nav pull-right">
         
 <?php
+
+	if(is_ext_installed())
+	{
+		echo currencies::exchange_rate_widget();
+	}
+
   if(app_session_is_registered('app_current_version')) 
   if(strlen($app_current_version)>0 and $app_current_version>PROJECT_VERSION and $app_user['group_id']==0):
 ?>			
@@ -43,7 +49,6 @@
 				</ul>
 			</li>
 <?php endif ?>    
-
 
 <?php plugins::include_part('header_dropdown_menu') ?>      
         
@@ -75,4 +80,29 @@
 </div>
 <!-- END TOP NAVIGATION BAR -->
 </div>
+
+<script>
+  function set_user_cfg(key,value)
+  {
+    switch(key)
+    {
+      case 'sidebar-option':
+          if(value=='fixed') value = 'page-sidebar-fixed'; else value = '';
+        break;
+      case 'sidebar-pos-option':
+          if(value=='right') value = 'page-sidebar-reversed'; else value = '';
+        break;
+      case 'page-scale-option':
+          if(value=='reduced') value = 'page-scale-reduced'; else value = '';
+        break;
+    }
+          
+    $.ajax({
+      method: "POST",
+      url: "<?php echo url_for('users/account','action=set_cfg')?>",
+      data: { key: key, value: value }
+    })
+  }
+
+</script>
  

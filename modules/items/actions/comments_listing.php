@@ -1,4 +1,10 @@
-<?php if(!users::has_comments_access('view')) exit() ?>
+<?php 
+
+$access_rules = new access_rules($current_entity_id, $current_item_id);
+
+if(!users::has_comments_access('view', $access_rules->get_comments_access_schema())) exit() 
+
+?>
 
 <?php
 
@@ -14,7 +20,7 @@ if(strlen($_POST['search_keywords'])>0)
 }
 
 
-$user_has_comments_access = (users::has_comments_access('update') or users::has_comments_access('delete') or users::has_comments_access('create'));
+$user_has_comments_access = (users::has_comments_access('update', $access_rules->get_comments_access_schema()) or users::has_comments_access('delete', $access_rules->get_comments_access_schema()) or users::has_comments_access('create', $access_rules->get_comments_access_schema()));
 	
 ?>
 
@@ -35,8 +41,9 @@ $fields_access_schema = users::get_fields_access_schema($current_entity_id,$app_
 $choices_cache = fields_choices::get_cache();
 
 $html = '';
-$listing_sql = "select * from app_comments where entities_id='" . db_input($current_entity_id) . "' and items_id='" . db_input($current_item_id) . "' " . $listing_sql_query . " order by date_added desc";
+$listing_sql = "select * from app_comments where entities_id='" . db_input($current_entity_id) . "' and items_id='" . db_input($current_item_id) . "' " . $listing_sql_query . " order by id desc";
 $listing_split = new split_page($listing_sql,'items_comments_listing');
+$listing_split->listing_funciton = 'load_comments_listing';
 $items_query = db_query($listing_split->sql_query);
 while($item = db_fetch_array($items_query))
 {
@@ -45,9 +52,9 @@ while($item = db_fetch_array($items_query))
   {
     $html_action_column = '
       <td class="nowrap">
-      ' . (users::has_comments_access('delete') ? button_icon_delete(url_for('items/comments_delete','id=' .$item['id'] . '&path=' . $_POST['path'])) . '<br>':'') . '
-      ' . (users::has_comments_access('update') ? button_icon_edit(url_for('items/comments_form','id=' .$item['id'] . '&path=' . $_POST['path'])) . '<br>':'') . '
-			' . (users::has_comments_access('create') ?  button_icon(TEXT_REPLY,'fa fa-reply',url_for('items/comments_form','reply_to=' .$item['id'] . '&path=' . $_POST['path'])):'') . '
+      ' . (users::has_comments_access('delete', $access_rules->get_comments_access_schema()) ? button_icon_delete(url_for('items/comments_delete','id=' .$item['id'] . '&path=' . $_POST['path'])) . '<br>':'') . '
+      ' . (users::has_comments_access('update', $access_rules->get_comments_access_schema()) ? button_icon_edit(url_for('items/comments_form','id=' .$item['id'] . '&path=' . $_POST['path'])) . '<br>':'') . '
+			' . (users::has_comments_access('create', $access_rules->get_comments_access_schema()) ?  button_icon(TEXT_REPLY,'fa fa-reply',url_for('items/comments_form','reply_to=' .$item['id'] . '&path=' . $_POST['path'])):'') . '
       </td>
     ';
   }
@@ -65,7 +72,8 @@ while($item = db_fetch_array($items_query))
     $output_options = array('class'=>$field['type'],
                             'value'=>$field['fields_value'],
                             'field'=>$field, 
-                            'path'=>$_POST['path'],                           
+                            'path'=>$_POST['path'],
+    												'is_listing'=>true,
                             'choices_cache'=>$choices_cache);
           
     $html_fields .='                      
@@ -97,11 +105,11 @@ while($item = db_fetch_array($items_query))
       ' . $html_action_column . ' 
       ' . ($entity_cfg->get('display_comments_id')==1 ? '<td>' . $item['id'] . '</td>':''). '   
       <td style="white-space: normal;">
-        			<div class="ckeditor-images-content-prepare">' . auto_link_text($item['description'])  . '</div>' . 
+        			<div class="ckeditor-images-content-prepare"><div class="fieldtype_textarea_wysiwyg">' . auto_link_text($item['description'])  . '</div></div>' . 
         			$attachments . 
         			$html_fields .        			
       '</td>
-      <td class="nowrap">' . format_date_time($item['date_added']) . '<br><span ' . users::render_publi_profile($app_users_cache[$item['created_by']],true). '>' . $app_users_cache[$item['created_by']]['name']. '</span><br>' . render_user_photo($app_users_cache[$item['created_by']]['photo']). '</td>
+      <td class="nowrap">' . format_date_time($item['date_added']) . ($item['created_by']>0 ? '<br><span ' . users::render_publi_profile($app_users_cache[$item['created_by']],true). '>' . $app_users_cache[$item['created_by']]['name']. '</span><br>' . render_user_photo($app_users_cache[$item['created_by']]['photo']) : '') . '</td>
     </tr>
   '; 
 }

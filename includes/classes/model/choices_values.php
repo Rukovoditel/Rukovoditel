@@ -6,13 +6,13 @@ class choices_values
   
   protected $use_for_fieldtypes; 
   
-  protected $choices_values_list;
+  public $choices_values_list;
   
   function __construct($entities_id)
   {
     $this->entities_id = $entities_id;
     
-    $this->use_for_fieldtypes = array('fieldtype_dropdown','fieldtype_radioboxes','fieldtype_grouped_users','fieldtype_checkboxes','fieldtype_dropdown_multiple','fieldtype_entity','fieldtype_users');
+    $this->use_for_fieldtypes = array('fieldtype_dropdown','fieldtype_radioboxes','fieldtype_grouped_users','fieldtype_checkboxes','fieldtype_dropdown_multiple','fieldtype_entity','fieldtype_users','fieldtype_dropdown_multilevel');
     
     $this->choices_values_list = array();
   }

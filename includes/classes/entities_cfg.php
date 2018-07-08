@@ -36,6 +36,8 @@ class entities_cfg
     
     if(strlen($key)>0)
     {
+    	$value = (is_array($value) ? implode(',',$value) : $value);
+    	
       $cfq_query = db_query("select * from app_entities_configuration where configuration_name='" . db_input($key) . "' and entities_id='" . db_input($this->entities_id) . "'");
       if(!$cfq = db_fetch_array($cfq_query))
       {

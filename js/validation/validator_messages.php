@@ -2,6 +2,7 @@
   $.extend($.validator.messages, { 
     required: '<?php echo addslashes(TEXT_ERROR_REQUIRED) ?>',
     number: '<?php echo addslashes(TEXT_ERROR_REQUIRED_NUMBER) ?>',
-    extension: '<?php echo addslashes(TEXT_ERROR_FILE_EXTENSION) ?>'
+    extension: '<?php echo addslashes(TEXT_ERROR_FILE_EXTENSION) ?>',
+    email: '<?php echo addslashes(TEXT_ERROR_REQUIRED_EMAIL) ?>',
   });
 </script>

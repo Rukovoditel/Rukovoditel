@@ -42,38 +42,3 @@
 	</div>
 </div>
 <!-- END BEGIN STYLE CUSTOMIZER -->
-
-<script>
-  function set_user_cfg(key,value)
-  {
-    switch(key)
-    {
-      case 'sidebar-option':
-          if(value=='fixed') value = 'page-sidebar-fixed'; else value = '';
-        break;
-      case 'sidebar-pos-option':
-          if(value=='right') value = 'page-sidebar-reversed'; else value = '';
-        break;
-      case 'page-scale-option':
-          if(value=='reduced') value = 'page-scale-reduced'; else value = '';
-        break;
-    }
-          
-    $.ajax({
-      method: "POST",
-      url: "<?php echo url_for('users/account','action=set_cfg')?>",
-      data: { key: key, value: value }
-    })
-  }
-
-  $('.sidebar-toggler').click(function(){
-    if($('body').hasClass('page-sidebar-closed'))
-    {
-    	set_user_cfg('sidebar-status',''); 
-    } 
-    else
-    {
-    	set_user_cfg('sidebar-status','page-sidebar-closed')
-    }   
-  })
-</script>

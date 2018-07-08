@@ -10,6 +10,8 @@ class items_listing
   
   public $force_access_query;
   
+  public $report_type;
+  
   function __construct($reports_id)
   {
     $reports_info = db_find('app_reports',$reports_id);
@@ -20,7 +22,9 @@ class items_listing
     
     $this->rows_per_page = $reports_info['rows_per_page'];
     
-    $this->force_access_query = $reports_info['displays_assigned_only']; 
+    $this->force_access_query = $reports_info['displays_assigned_only'];
+    
+    $this->report_type = $reports_info['reports_type'];
   }
   
   function get_fields_query()

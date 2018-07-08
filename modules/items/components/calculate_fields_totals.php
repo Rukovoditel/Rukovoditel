@@ -59,8 +59,7 @@ $totals = $totals_array;
 $html .= '
   <tfoot>
     <tr>
-      <td></td>
-';
+      ' . ($has_with_selected ? '<td></td>':''); 
 
 foreach($listing_fields as $field)
 {
@@ -89,12 +88,38 @@ foreach($listing_fields as $field)
       
       $avg_value = number_format($avg_value,2,'.','');
     }
+    
+    //add prefix and sufix
+    $value = (strlen($value) ? $cfg->get('prefix') . $value . $cfg->get('suffix') : '');    
+    $avg_value = (strlen($avg_value) ? $cfg->get('prefix') . $avg_value . $cfg->get('suffix') : '');
          
     $html .= '<td class="numeric_fields_total_values">' . ($cfg->get('calclulate_totals')==1 ? $value . '<br>':'') . ($cfg->get('calculate_average')==1 ?  $avg_value:'').  '</td>';
   }
   else
   {
-    $html .= '<td></td>'; 
+  	if($field['type']=='fieldtype_dropdown_multilevel')
+  	{
+  		$cfg = new fields_types_cfg($field['configuration']);
+  		
+  		if($cfg->get('value_displya_own_column')==1)
+  		{	
+  			$level_settings = (strlen($cfg->get('level_settings')) ? explode("\n",$cfg->get('level_settings')) : array());
+  		}
+  		else
+  		{
+  			$level_settings = array(1);
+  		}
+  		
+  		foreach($level_settings as $v)
+  		{
+  			$html .= '<td></td>';
+  		}
+  	}
+  	else
+  	{
+  		$html .= '<td></td>';
+  	}
+     
   }
 }
 

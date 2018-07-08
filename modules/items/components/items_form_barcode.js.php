@@ -1,9 +1,9 @@
-$("#items_form .atuogenerate-value-by-template").each(function(){	
+$("#"+form.name+" .atuogenerate-value-by-template").each(function(){	
 	if($(this).val().length==0)
 	{
 		template = $(this).attr('data-template');
 		
-		$("#items_form input.form-control").each(function(){
+		$("#"+form.name+" input.form-control").each(function(){
 			fields_id = $(this).attr('id').replace('fields_','')
 			template = template.split('['+fields_id+']').join($(this).val())							
 		})		
@@ -23,4 +23,4 @@ $("#items_form .atuogenerate-value-by-template").each(function(){
 		//alert(template) 
 		$(this).val(template)
 	}
-})
+}) 

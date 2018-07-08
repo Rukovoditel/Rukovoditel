@@ -18,6 +18,8 @@ if($entity_info['parent_id']==0)
   $fields_sql_query .= " and f.type not in ('fieldtype_parent_item_id')";
 }
 
+$fields_sql_query .= " and f.type not in ('fieldtype_section')";
+
 ?>
 <div class="row">
   <div class="col-md-8">
@@ -48,7 +50,7 @@ if($entity_info['parent_id']==0)
     <div class="cfg_listing">        
     <ul id="fields_excluded_from_listing" class="sortable">
     <?php
-    $fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where f.listing_status = 0 " . $fields_sql_query . " and  f.entities_id='" . db_input($_GET['entities_id']) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
+    $fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where f.listing_status = 0 " . $fields_sql_query . " and  f.entities_id='" . db_input($_GET['entities_id']) . "' and f.forms_tabs_id=t.id and f.type not in ('fieldtype_mapbbcode') order by t.sort_order, t.name, f.sort_order, f.name");
     while($v = db_fetch_array($fields_query))
     {
       echo '<li id="form_fields_' . $v['id'] . '"><div>' . fields_types::get_option($v['type'],'name',$v['name']). '</div></li>';
@@ -70,28 +72,36 @@ if($entity_info['parent_id']==0)
 
 <?php
 
+$cfg = new entities_cfg($_GET['entities_id']);
+
 //select allowed fields for heading
 $choices = array();
 $choices[''] = '';    
-$fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where f.type not in ('fieldtype_action','fieldtype_parent_item_id','fieldtype_input_numeric_comments','fieldtype_input_url','fieldtype_attachments','fieldtype_input_file','fieldtype_image','fieldtype_textarea_wysiwyg','fieldtype_formula','fieldtype_related_records','fieldtype_user_status','fieldtype_user_accessgroups','fieldtype_user_language','fieldtype_user_skin','fieldtype_user_photo')  and f.entities_id='" . db_input($_GET["entities_id"]) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
+$fields_query = db_query("select f.*, t.name as tab_name,if(f.type in ('fieldtype_id','fieldtype_date_added','fieldtype_created_by','fieldtype_parent_item_id'),-1,t.sort_order) as tab_sort_order from app_fields f, app_forms_tabs t where f.type not in ('fieldtype_action','fieldtype_parent_item_id','fieldtype_mapbbcode','fieldtype_section','fieldtype_input_numeric_comments','fieldtype_input_url','fieldtype_attachments','fieldtype_input_file','fieldtype_image','fieldtype_textarea_wysiwyg','fieldtype_formula','fieldtype_related_records','fieldtype_user_status','fieldtype_user_accessgroups','fieldtype_user_language','fieldtype_user_skin','fieldtype_user_photo')  and f.entities_id='" . db_input($_GET["entities_id"]) . "' and f.forms_tabs_id=t.id order by tab_sort_order, t.name, f.sort_order, f.name");
 while($v = db_fetch_array($fields_query))
 {
   $choices[$v['id']] = fields_types::get_option($v['type'],'name',$v['name']);
 }
 ?>
+
+<legend><?php echo TEXT_SELECT_HEADING_FIELD ?></legend>
 <div class="row">
-  <div class="col-md-8">
-    <legend><?php echo TEXT_SELECT_HEADING_FIELD ?></legend>
-    
-    <div><?php echo select_tag('heading_field_id',$choices,fields::get_heading_id($_GET["entities_id"]),array('class'=>'form-control input-large'))?></div>    
-    <div><?php echo TEXT_IS_HEADING_INFO ?></div>
-                  
+  <div class="col-md-3" style="min-width: 350px;">        
+    <div><?php echo select_tag('heading_field_id',$choices,fields::get_heading_id($_GET["entities_id"]),array('class'=>'form-control input-large'))?></div>                         
+  </div>
+  <div class="col-md-9">
+  	<form class="form-inline" role="form">
+				<div class="form-group">
+					<label for="number_fixed_field_in_listing"><?php echo tooltip_icon(TEXT_HEADING_WIDTH_BASED_CONTENT_INFO) . TEXT_HEADING_WIDTH_BASED_CONTENT ?></label>
+					<?php echo select_tag('heading_width_based_content',array('1'=>TEXT_YES,'0'=>TEXT_NO),(int)$cfg->get('heading_width_based_content'),array('class'=>'form-control input-small')) ?>
+				</div>
+			</form>  	
   </div>
 </div>
+<div><?php echo TEXT_IS_HEADING_INFO ?></div>
 
 <br><br>
 
-<?php $cfg = new entities_cfg($_GET['entities_id']); ?>
 <div class="row">
   <div class="col-md-8">
     <legend><?php echo TEXT_LISTING_HORISONTAL_SCROLL ?></legend>
@@ -125,7 +135,14 @@ while($v = db_fetch_array($fields_query))
           $.ajax({type: "POST",url: '<?php echo url_for("entities/fields","action=sort_fields&entities_id=" . $_GET["entities_id"])?>',data: data});
         }
     	});
-      
+
+
+    	$("#heading_width_based_content").change(function(){
+        $.ajax({type: "POST",
+                url: '<?php echo url_for("entities/fields","action=set_heading_field_width&entities_id=" . $_GET["entities_id"])?>',
+                data: {heading_width_based_content:$(this).val()}
+               });
+     })
       
       $("#number_fixed_field_in_listing").keyup(function(){
          $.ajax({type: "POST",

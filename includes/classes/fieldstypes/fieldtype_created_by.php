@@ -6,14 +6,13 @@ class fieldtype_created_by
   
   function __construct()
   {
-    $this->options = array('name'=>TEXT_FIELDTYPE_CREATEDBY_TITLE);
+    $this->options = array('name'=>TEXT_FIELDTYPE_CREATEDBY_TITLE, 'title'=>TEXT_FIELDTYPE_CREATEDBY_TITLE);    
   }
   
   function output($options)
   {
     global $app_users_cache;
-    
-    
+               
     if($options['field']['entities_id']==1 and $options['value']==0)
     {
     	return TEXT_PUBLIC_REGISTRATION;

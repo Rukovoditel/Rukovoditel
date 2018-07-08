@@ -32,6 +32,11 @@
 			$obj['description'] = $reply_to_obj['description'] . "\n";
 		}
 	}
+	
+	if(isset($_GET['description']))
+	{
+		$obj['description'] = db_prepare_input($_GET['description']);
+	}
 ?>
       
 <?php

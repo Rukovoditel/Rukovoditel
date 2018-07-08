@@ -1,6 +1,6 @@
 <h3 class="page-title"><?php echo TEXT_ENTITIES_HEADING ?></h3>
 
-<?php echo button_tag(TEXT_ADD_NEW_ENTITY,url_for('entities/entities_form')) ?>
+<?php echo button_tag(TEXT_ADD_NEW_ENTITY,url_for('entities/entities_form')) . ' ' .  button_tag('<i class="fa fa-sitemap"></i> ' . TEXT_FLOWCHART,url_for('entities/entities_flowchart'),false,array('class'=>'btn btn-default')) ?>
 
 <div class="table-scrollable" style="overflow-x:visible;overflow-y:visible; ">
 <table class="table table-striped table-bordered table-hover">
@@ -32,7 +32,9 @@
 					<a href="#"><?php echo TEXT_NAV_VIEW_CONFIG ?></a>
 					<ul class="dropdown-menu">
 						<li><?php echo link_to(TEXT_NAV_FORM_CONFIG,url_for('entities/forms','entities_id=' . $v['id'])) ?></li>
+						<li><?php echo link_to(TEXT_NAV_FORMS_FIELDS_DISPLAY_RULES,url_for('forms_fields_rules/rules','entities_id=' . $v['id'])) ?></li>
 						<li><?php echo link_to(TEXT_NAV_LISTING_CONFIG,url_for('entities/listing','entities_id=' . $v['id'])) ?></li>
+						<li><?php echo link_to(TEXT_NAV_ITEM_PAGE_CONFIG,url_for('entities/item_page_configuration','entities_id=' . $v['id'])) ?></li>
 						<li><?php echo link_to(TEXT_NAV_LISTING_FILTERS_CONFIG,url_for('entities/listing_filters','entities_id=' . $v['id'])) ?></li>
 	          <?php if($v['id']==1): ?>
 	          	<li><?php echo link_to(TEXT_NAV_USER_PUBLIC_PROFILE_CONFIG,url_for('entities/user_public_profile','entities_id=' . $v['id'])) ?></li>
@@ -44,6 +46,7 @@
 					<ul class="dropdown-menu">
 						<li><?php echo link_to(TEXT_NAV_ENTITY_ACCESS,url_for('entities/access','entities_id=' . $v['id'])) ?></li>
 						<li><?php echo link_to(TEXT_NAV_FIELDS_ACCESS,url_for('entities/fields_access','entities_id=' . $v['id'])) ?></li>
+						<li><?php echo link_to(TEXT_NAV_ACCESS_RULES,url_for('access_rules/fields','entities_id=' . $v['id'])) ?></li>
 					</ul>
 				</li>
 	      <li class="dropdown-submenu">

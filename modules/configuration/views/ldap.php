@@ -12,6 +12,13 @@
   </div>
   
   <div class="form-group">
+  	<label class="col-md-3 control-label" for="CFG_LDAP_USE"><?php echo TEXT_USE_LDAP_LOGIN_ONLY ?></label>
+    <div class="col-md-9">
+    	<p class="form-control-static"><?php echo app_render_status_label(CFG_USE_LDAP_LOGIN_ONLY)?></p>	  	      	
+    </div>			
+  </div>
+  
+  <div class="form-group">
   	<label class="col-md-3 control-label" for="CFG_LDAP_SERVER_NAME"><?php echo TEXT_LDAP_SERVER_NAME ?></label>
     <div class="col-md-9">	
   	  <?php echo input_tag('CFG[LDAP_SERVER_NAME]', CFG_LDAP_SERVER_NAME,array('class'=>'form-control input-large')) . '<span class="help-block">' . TEXT_LDAP_SERVER_NAME_NOTES . '</span>'; ?>
@@ -50,6 +57,20 @@
   	<label class="col-md-3 control-label" for="CFG_LDAP_EMAIL_ATTRIBUTE"><?php echo TEXT_LDAP_EMAIL_ATTRIBUTE ?></label>
     <div class="col-md-9">	
   	  <?php echo input_tag('CFG[LDAP_EMAIL_ATTRIBUTE]', CFG_LDAP_EMAIL_ATTRIBUTE,array('class'=>'form-control input-large')). '<span class="help-block">' . TEXT_LDAP_EMAIL_ATTRIBUTE_NOTES . '</span>'; ?>
+    </div>			
+  </div>
+  
+  <div class="form-group">
+  	<label class="col-md-3 control-label" for="CFG_LDAP_FIRSTNAME_ATTRIBUTE"><?php echo TEXT_LDAP_FIRSTNAME ?></label>
+    <div class="col-md-9">	
+  	  <?php echo input_tag('CFG[LDAP_FIRSTNAME_ATTRIBUTE]', CFG_LDAP_FIRSTNAME_ATTRIBUTE,array('class'=>'form-control input-large')). '<span class="help-block">' . TEXT_LDAP_FIRSTNAME_NOTE . '</span>'; ?>
+    </div>			
+  </div>
+  
+  <div class="form-group">
+  	<label class="col-md-3 control-label" for="CFG_LDAP_LASTNAME_ATTRIBUTE"><?php echo TEXT_LDAP_LASTNAME ?></label>
+    <div class="col-md-9">	
+  	  <?php echo input_tag('CFG[LDAP_LASTNAME_ATTRIBUTE]', CFG_LDAP_LASTNAME_ATTRIBUTE,array('class'=>'form-control input-large')). '<span class="help-block">' . TEXT_LDAP_LASTNAME_NOTE . '</span>'; ?>
     </div>			
   </div>
     

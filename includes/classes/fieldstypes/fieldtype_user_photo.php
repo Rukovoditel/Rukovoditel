@@ -6,7 +6,7 @@ class fieldtype_user_photo
   
   function __construct()
   {
-    $this->options = array('name' => TEXT_FIELDTYPE_USER_PHOTO_TITLE);
+    $this->options = array('name' => TEXT_FIELDTYPE_USER_PHOTO_TITLE,'title' => TEXT_FIELDTYPE_USER_PHOTO_TITLE);
   }
   
   function render($field,$obj,$params = array())
@@ -84,14 +84,33 @@ class fieldtype_user_photo
     if(strlen($options['value'])>0)
     {  
       $file = attachments::parse_filename($options['value']);
-                
+      
+      $filename = $file['file'];
+            
       if(isset($options['is_export']))
       {
         return $file['name'];    
       }
+      elseif(isset($options['is_listing']))
+      {
+      	return  image_tag(DIR_WS_USERS . $file['file_sha1'],array('width'=>50));
+      }
       else
       {        
-        return image_tag(DIR_WS_USERS . $file['file_sha1'],array('width'=>50));
+        return  '
+        		<div class="attachments-gallery">
+        			<ul>
+        				<li>
+        					<div class="gallery-image"><a class="fancybox" href="' . url_for('items/info&path=' . $options['path']  ,'&action=preview_user_photo&file=' . urlencode(base64_encode($filename))) . '">' . image_tag(DIR_WS_USERS . $file['file_sha1']) . '</a></div>
+        					<div class="gallery-download-link">' . link_to('<i class="fa fa-download"></i> ' . TEXT_DOWNLOAD,url_for('items/info&path=' . $options['path'] ,'&action=download_user_photo&file=' . urlencode(base64_encode($filename)))). '</div>
+        				</li>
+        			</ul>
+        		</div>
+        		<script type="text/javascript">
+            	$(document).ready(function() {
+            		$(".fancybox").fancybox({type: "ajax"});
+            	});
+            </script>';
       }
     }
     else

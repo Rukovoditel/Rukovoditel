@@ -9,12 +9,19 @@
   <div class="portlet-body form">
 
 
-<?php echo form_tag('account_form', url_for('users/account','action=update'),array('enctype'=>'multipart/form-data','class'=>'form-horizontal')) ?>
+<?php 
+	$is_new_item = false;
+	$app_items_form_name = 'account_form';
+	$_GET['id'] = $app_user['id'];
+	$current_path = 1;
+	$_GET['path'] = 1;
+	echo form_tag('account_form', url_for('users/account','action=update'),array('enctype'=>'multipart/form-data','class'=>'form-horizontal')) 
+?>
   <div class="form-body">
 
 <?php
 
-  $excluded_fileds_types = "'fieldtype_user_accessgroups','fieldtype_user_status','fieldtype_user_skin'";
+  $excluded_fileds_types = "'fieldtype_user_accessgroups','fieldtype_user_status','fieldtype_user_skin','fieldtype_text_pattern'";
                           
   if(CFG_ALLOW_CHANGE_USERNAME==0)
   {
@@ -46,6 +53,8 @@
 				  		
 		';
   
+  $fields_access_schema = users::get_fields_access_schema($current_entity_id,$app_user['group_id']);
+      
   $html = '';
   
   if($count_tabs>1)
@@ -70,24 +79,75 @@
               
       $html .= '
         <div class="tab-pane ' . ($count==0 ? 'active':'') . '" id="form_tab_' . $tabs['id'] . '">
-          ';
-                          
+          ' . (strlen($tabs['description']) ? '<p>' . $tabs['description'] . '</p>' : '');
+      
+      $count_fields = 0;
       $fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where f.type not in (" . fields_types::get_reserverd_types_list(). "," . $excluded_fileds_types . ") and  f.entities_id='" . db_input($current_entity_id) . "' and f.forms_tabs_id=t.id and f.forms_tabs_id='" . db_input($tabs['id']) . "' order by t.sort_order, t.name, f.sort_order, f.name");
       while($v = db_fetch_array($fields_query))
       {
-        
-        $html .= '
-          <div class="form-group">
-          	<label class="col-md-3 control-label" for="fields_' . $v['id'] . '">' . fields_types::get_option($v['type'],'name',$v['name']) . '</label>
-            <div class="col-md-9">	
-          	  ' . fields_types::render($v['type'],$v,$obj) 
-                . tooltip_text($v['tooltip']) . '
-            </div>			
-          </div>
-        '; 
+      	if($v['type']=='fieldtype_user_language' and count(app_get_languages_choices())==1)
+      	{
+      		$html .= input_hidden_tag('fields[' . $v['id'] . ']',CFG_APP_LANGUAGE);
+      		continue;
+      	}
+      	
+      	if(isset($fields_access_schema[$v['id']]))
+      	{
+      		if($fields_access_schema[$v['id']]=='hide')
+      		{
+      			continue;
+      		}
+      		elseif($fields_access_schema[$v['id']]=='view' and strlen($obj['field_' . $v['id']]))
+      		{
+      			$output_options = array('class'=>$v['type'],
+      					'value'=>$obj['field_' . $v['id']],
+      					'field'=>$v,
+      					'item'=>$obj,      					
+      					'path'=>$current_entity_id . '-' . $app_user['id']);
+      			
+      			$output = fields_types::output($output_options);
+      			
+      			if(strlen($output))
+      			{	      				
+	      			$html .= '
+			          <div class="form-group form-group-' . $v['id'] . '">
+			          	<label class="col-md-3 control-label" for="fields_' . $v['id'] . '">' . fields_types::get_option($v['type'],'name',$v['name']) . '</label>
+			            <div class="col-md-9">
+			          	  <p class="form-control-static">' . $output . '</p>
+			            </div>
+			          </div>
+		        	';
+      			}      			
+      		}
+      	}	      	
+      	elseif($v['type']=='fieldtype_section')
+      	{
+      		$html .= '<div class="form-group-' . $v['id'] . '">' . fields_types::render($v['type'],$v,$obj,array('count_fields'=>$count_fields)) . '</div>';
+      	}
+      	elseif($v['type']=='fieldtype_dropdown_multilevel')
+      	{
+      		$html .= fields_types::render($v['type'],$v,$obj,array('parent_entity_item_id'=>$parent_entity_item_id, 'form'=>'item', 'is_new_item'=>$is_new_item));
+      	}
+      	else
+      	{
+	        $html .= '
+	          <div class="form-group form-group-' . $v['id'] . '">
+	          	<label class="col-md-3 control-label" for="fields_' . $v['id'] . '">' . fields_types::get_option($v['type'],'name',$v['name']) . '</label>
+	            <div class="col-md-9">	
+	          	  ' . fields_types::render($v['type'],$v,$obj,array('is_new_item'=>false)) 
+	                . tooltip_text($v['tooltip']) . '
+	            </div>			
+	          </div>
+	        '; 
+      	}
+      	
+      	$count_fields++;
       }
       
-      $html .= $html_cfg;
+      if($count==0)
+      {
+      	$html .= $html_cfg;
+      }
       
       $html .= '</div>';
       
@@ -99,25 +159,78 @@
   }
   else
   {  
-    
+  	$count_fields = 0;
     $fields_query = db_query("select f.* from app_fields f where f.type not in (" . fields_types::get_reserverd_types_list(). "," . $excluded_fileds_types . ") and  f.entities_id='" . db_input($current_entity_id) . "' order by f.sort_order, f.name");
     while($v = db_fetch_array($fields_query))
-    {           
-      $html .= '
-        <div class="form-group">
-        	<label class="col-md-3 control-label" for="fields_' . $v['id'] . '">' . fields_types::get_option($v['type'],'name',$v['name']) . '</label>
-          <div class="col-md-9">	
-        	  ' . fields_types::render($v['type'],$v,$obj) 
-              . tooltip_text($v['tooltip']) . '
-          </div>			
-        </div>
-      ';    
+    {  
+    	if($v['type']=='fieldtype_user_language' and count(app_get_languages_choices())==1)
+    	{
+    		$html .= input_hidden_tag('fields[' . $v['id'] . ']',CFG_APP_LANGUAGE);
+    		continue;
+    	}
+    	
+    	if(isset($fields_access_schema[$v['id']]))
+    	{
+    		if($fields_access_schema[$v['id']]=='hide')
+    		{
+    			continue;
+    		}
+    		elseif($fields_access_schema[$v['id']]=='view' and strlen($obj['field_' . $v['id']]))
+    		{
+    			$output_options = array('class'=>$v['type'],
+    					'value'=>$obj['field_' . $v['id']],
+    					'field'=>$v,
+    					'item'=>$obj,
+    					'path'=>$current_entity_id . '-' . $app_user['id']);
+    			
+    			$output = fields_types::output($output_options);
+    			 
+    			if(strlen($output))
+    			{
+    				
+	    			$html .= '
+		          <div class="form-group form-group-' . $v['id'] . '">
+		          	<label class="col-md-3 control-label" for="fields_' . $v['id'] . '">' . fields_types::get_option($v['type'],'name',$v['name']) . '</label>
+		            <div class="col-md-9">
+		          	  <p class="form-control-static">' . $output . '</p>
+		            </div>
+		          </div>
+		        ';
+    			}
+    		}
+    	}
+    	elseif($v['type']=='fieldtype_section')
+    	{
+    		$html .= '<div class="form-group-' . $v['id'] . '">' . fields_types::render($v['type'],$v,$obj,array('count_fields'=>$count_fields)) . '</div>';
+    	}
+    	elseif($v['type']=='fieldtype_dropdown_multilevel')
+    	{
+    		$html .= fields_types::render($v['type'],$v,$obj,array('parent_entity_item_id'=>$parent_entity_item_id, 'form'=>'item', 'is_new_item'=>$is_new_item));
+    	}
+    	else
+    	{
+	      $html .= '
+	        <div class="form-group form-group-' . $v['id'] . '">
+	        	<label class="col-md-3 control-label" for="fields_' . $v['id'] . '">' . fields_types::get_option($v['type'],'name',$v['name']) . '</label>
+	          <div class="col-md-9">	
+	        	  ' . fields_types::render($v['type'],$v,$obj,array('is_new_item'=>false)) 
+	              . tooltip_text($v['tooltip']) . '
+	          </div>			
+	        </div>
+	      ';
+    	}
+    	
+    	$count_fields++;
     }
     
     $html .= $html_cfg;
   }
   
   echo $html;
+  
+  //check ruels for hidden fields by access 
+  echo forms_fields_rules::prepare_hidden_fields($current_entity_id, $obj, $fields_access_schema);
+  
 ?>
 
     <div id="form-error-container"></div>
@@ -139,30 +252,17 @@
   </div>
 </div>
 
+<style>
+.bg-color-value{
+	display: inline-block;
+}
+</style>
+
+<?php require(component_path('items/items_form.js')); ?>  
+
 <script>
   $(function() { 
-                        
-    $('#account_form').validate({
-      ignore:'',         
-      messages: {		        	    
-        <?php echo fields::render_required_messages($current_entity_id); ?>			   
-			},
-      submitHandler: function(form)
-      {      
-        <?php if($current_entity_id==1){ echo 'validate_user_form(form,\'' . url_for('users/validate_form', 'id=' . $app_logged_users_id ). '\');'; }else{ echo 'form.submit();'; } ?>        
-      },      
-      invalidHandler: function(e, validator) {
-  			var errors = validator.numberOfInvalids();
-  			if (errors) {
-  				var message = '<?php echo TEXT_ERROR_GENERAL ?>';
-  				$("div#form-error-container").html('<div class="note note-danger">'+message+'</div>');
-  				$("div#form-error-container").show();
-          $("div#form-error-container").delay(5000).fadeOut();				
-  			} 
-		  }
-      
-    });  
-    
+                            
     //validate user photo
     $( "#fields_10" ).rules( "add", {
         required: false,
@@ -175,4 +275,4 @@
     })    
                                                                  
   });
-</script>  
+</script>

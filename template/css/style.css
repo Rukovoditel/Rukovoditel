@@ -24,7 +24,7 @@ Reset and overrides
 /* general body settings */
 body { 
   color: #000; 
-  font-family: 'Open Sans', sans-serif;
+  font-family: areal, 'Open Sans', sans-serif;
   padding: 0px !important;
   margin: 0px !important;
   font-size:13px; 
@@ -527,7 +527,7 @@ Page content
   position: relative;
   margin: 0;
   border: 0px;
-  padding: 10px 15px;
+  padding: 10px 10px;
   text-decoration: none;
   font-size: 14px;
   font-weight: 300;

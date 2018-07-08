@@ -7,39 +7,50 @@ class hot_reports
   function __construct()
   {
     //set limit items in reports popup
-    $this->poup_items_limit = 25;
+    $this->poup_items_limit = 10;
   }
   
   //render reports header navitagion menu
   function render()
-  {      
+  {
+  	global $app_user;
+  	
     $html = '';  
                 
     $reports_query = db_query($this->reports_query());
     while($reports = db_fetch_array($reports_query))
     {
+    	$html_cache = '';
+    	$cahce_filename = 'user-' . $app_user['id'] . '-report-' . $reports['id'];
+    	$cache_lifetime = (($reports['in_header'] and $reports['in_header_autoupdate']) ? 60 : CFG_CACHE_REPORTS_IN_HEADER_LIFETIME);
+    	 
+    	app_read_cache($html_cache, $cahce_filename, $cache_lifetime,CFG_USE_CACHE_REPORTS_IN_HEADER);
+    	
     	//set off $this->render_dropdown($reports['id']) to speed up
       $html .= '
         <li class="dropdown hot-reports" id="hot_reports_' . $reports['id'] . '" data-id="' . $reports['id'] . '">
-          ' . '
+          ' . $html_cache .  '
         </li>
         
         <script>
           function hot_reports_' . $reports['id'] . '_render_dropdown()
           {
             $("#hot_reports_' . $reports['id'] . '").load("' . url_for("dashboard/","action=update_hot_reports&reports_id=" . $reports['id']) . '",function(){
-                $(\'[data-hover="dropdown"]\').dropdownHover();                
+                $(\'[data-hover="dropdown"]\').dropdownHover();  
+            		app_handle_scrollers();
               })
           }
             		
+          ' . ($reports['in_header_autoupdate']==1 ? '  		
           $(function(){
              setInterval(function(){
               hot_reports_' . $reports['id'] . '_render_dropdown()
              },60000);                                                                   
           });
-              		
-          hot_reports_' . $reports['id'] . '_render_dropdown()
+          ':'') . '
           		
+          ' . (!strlen($html_cache) ? 'hot_reports_' . $reports['id'] . '_render_dropdown();':'') . '
+          		                    		
         </script>
       ';
     }
@@ -51,6 +62,9 @@ class hot_reports
   function get_items($report_info,$options = array())
   {
   	global $sql_query_having;
+  	  	
+  	//get heading field
+  	$field_heading_id = fields::get_heading_id($report_info['entities_id']);
   	
   	$listing_sql_query_select = '';
   	$listing_sql_query = '';
@@ -59,8 +73,8 @@ class hot_reports
     $sql_query_having = array();
     
     //prepare formulas query
-    $listing_sql_query_select = fieldtype_formula::prepare_query_select($report_info['entities_id'], $listing_sql_query_select);
-    
+    $listing_sql_query_select = fieldtype_formula::prepare_query_select($report_info['entities_id'], $listing_sql_query_select,false,array('reports_id'=>$report_info['id'],'fields_in_listing'=>$field_heading_id));
+        
     //prepare listing query        
     $listing_sql_query = reports::add_filters_query($report_info['id'],$listing_sql_query);
                
@@ -71,7 +85,7 @@ class hot_reports
     }
     
     //check view assigned only access
-    $listing_sql_query = items::add_access_query($report_info['entities_id'],$listing_sql_query);
+    $listing_sql_query = items::add_access_query($report_info['entities_id'],$listing_sql_query, $report_info['displays_assigned_only']);
     
     //add having query
     $listing_sql_query .= $listing_sql_query_having;
@@ -80,10 +94,7 @@ class hot_reports
     $info = reports::add_order_query($report_info['listing_order_fields'],$report_info['entities_id']);
     $listing_sql_query .= $info['listing_sql_query'];
     $listing_sql_query_join .= $info['listing_sql_query_join'];
-            
-    //get heading field        
-    $field_heading_id = fields::get_heading_id($report_info['entities_id']);
-    
+                    
     $items_array = array();                    
         
     $count = 0;
@@ -91,7 +102,7 @@ class hot_reports
     $items_query = db_query($listing_sql);
     $count_items = db_num_rows($items_query);
     while($item = db_fetch_array($items_query))
-    {
+    {    	
       $path_info = items::get_path_info($report_info['entities_id'],$item['id']);
       
       $parent_name = '';
@@ -111,6 +122,8 @@ class hot_reports
        	}
       }
       
+      
+      
       $items_array[] = array('id'   => $item['id'],
                              'path' => $path_info['full_path'], 
                              'name' =>   ($field_heading_id ? items::get_heading_field_value($field_heading_id,$item) : $item['id']) . $parent_name);
@@ -129,68 +142,78 @@ class hot_reports
   //render reports nav menu dropdown
   function render_dropdown($id)
   {
+  	global $app_user;
+  	
     $html = '';
     $report_info_query = db_query("select * from app_reports where id='" . db_input($id) . "'");
     if($report_info = db_fetch_array($report_info_query))
     {
-      $entity_cfg = entities::get_cfg($report_info['entities_id']);
-      
-      
-      $items_info = $this->get_items($report_info);
-      
-      $items_html = '';
-      foreach($items_info['items_array'] as $v)
-      {
-        $items_html .= '
-          <li>
-  					<a href="' . url_for('items/info','path=' . $v['path']) . '">' . $v['name'] . '</a>
-  				</li>
-        ';
-      }
-      
-      if($items_info['items_count']==0)
-      {
-      	$items_html .= '
-          <li>
-  					<a onClick="return false;">' . TEXT_NO_RECORDS_FOUND . '</a>
-  				</li>
-        ';
-      }
-      
-      $external_html = '';
-      if($items_info['items_count']>$this->poup_items_limit)
-      {
-        $external_html = '
-          <li class="external">
-						<a href="' . url_for('reports/view','reports_id=' . $report_info['id']) . '">' . sprintf(TEXT_DISPLAY_NUMBER_OF_ITEMS,1,$this->poup_items_limit,$items_info['items_count']) . '</a>
-					</li>
-        ';
-      }
-      
-      $dropdown_menu_height = (count($items_info['items_array'])<11 ? (count($items_info['items_array'])*42+42) : 420);
-      
-      $badge_html = ($items_info['items_count']>0 ? '<span class="badge badge-warning">' . $items_info['items_count'] . '</span>' : '');
-      
-      $menu_icon = (strlen($report_info['menu_icon']) ? $report_info['menu_icon'] : (strlen($entity_cfg['menu_icon'])>0 ? $entity_cfg['menu_icon'] : 'fa-reorder') );
-      
-      $html = '
-        <a href="#" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown" data-close-others="true">
-				  <i class="fa ' . $menu_icon . '"></i>
-				  ' . $badge_html . '
-				</a>
-				<ul class="dropdown-menu extended tasks">
-					<li style="cursor:pointer" onClick="location.href=\'' . url_for('reports/view','reports_id=' . $report_info['id']) . '\'">
-						<p>' . $report_info['name'] . '</p>
-					</li>
-					<li>
-						<ul class="dropdown-menu-list scroller" style="height: ' . $dropdown_menu_height . 'px;">
-							' . $items_html . '
-              ' . $external_html . '  
-						</ul>
-					</li>
-          
-				</ul>            
-      ';
+    	$cahce_filename = 'user-' . $app_user['id'] . '-report-' . $report_info['id'];
+    	$cache_lifetime = (($report_info['in_header'] and $report_info['in_header_autoupdate']) ? 60 : CFG_CACHE_REPORTS_IN_HEADER_LIFETIME);
+    	    	    	
+    	if(!app_read_cache($html, $cahce_filename, $cache_lifetime,CFG_USE_CACHE_REPORTS_IN_HEADER))
+    	{
+	      $entity_cfg = entities::get_cfg($report_info['entities_id']);
+	      	      
+	      $items_info = $this->get_items($report_info);
+	      
+	      $items_html = '';
+	      foreach($items_info['items_array'] as $v)
+	      {
+	        $items_html .= '
+	          <li>
+	  					<a href="' . url_for('items/info','path=' . $v['path']) . '">' . $v['name'] . '</a>
+	  				</li>
+	        ';
+	      }
+	      
+	      if($items_info['items_count']==0)
+	      {
+	      	$items_html .= '
+	          <li>
+	  					<a onClick="return false;">' . TEXT_NO_RECORDS_FOUND . '</a>
+	  				</li>
+	        ';
+	      }
+	      
+	      $external_html = '';
+	      if($items_info['items_count']>0)
+	      {
+	        $external_html = '
+	          <li class="external">
+							<a href="' . url_for('reports/view','reports_id=' . $report_info['id']) . '">' . sprintf(TEXT_DISPLAY_NUMBER_OF_ITEMS_OPEN_REPORT,count($items_info['items_array'])) . '</a>
+						</li>
+	        ';
+	      }
+	      
+	      $dropdown_menu_height = (count($items_info['items_array'])<11 ? (count($items_info['items_array'])*42+42) : 420);
+	      
+	      $badge_html = ($items_info['items_count']>0 ? '<span class="badge badge-warning">' . $items_info['items_count'] . '</span>' : '');
+	      
+	      $menu_icon = (strlen($report_info['menu_icon']) ? $report_info['menu_icon'] : (strlen($entity_cfg['menu_icon'])>0 ? $entity_cfg['menu_icon'] : 'fa-reorder') );
+	      
+	      $html = '
+	        <a href="#" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown" data-close-others="true">
+					  <i class="fa ' . $menu_icon . '"></i>
+					  ' . $badge_html . '
+					</a>
+					<ul class="dropdown-menu extended tasks">
+						<li style="cursor:pointer" onClick="location.href=\'' . url_for('reports/view','reports_id=' . $report_info['id']) . '\'">
+							<p>' . $report_info['name'] . '</p>
+						</li>
+						<li>
+							<ul class="dropdown-menu-list scroller" style="height: ' . $dropdown_menu_height . 'px;">
+								' . $items_html . '
+	              ' . $external_html . '  
+							</ul>
+						</li>
+	          
+					</ul>            
+	      ';
+	      
+	      app_write_cache($html, $cahce_filename, CFG_USE_CACHE_REPORTS_IN_HEADER);
+	      
+    	}
     }
     
     return $html;;

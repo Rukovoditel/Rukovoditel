@@ -44,8 +44,12 @@
     }			
 	}
 	
-  $(function() {         	 
-    $("#comments_form").validate({ignore:'',errorClass:'error'});                                                                                          
+  $(function() {      	       	 
+    $("#comments_form").validate({ignore:'',errorClass:'error'});
+
+    app_currency_converter('#comments_form');  
+
+    <?php echo (isset($_GET['description']) ? 'app_move_caret_to_end("description")' : '')?>                                                                                        
   });
     
 </script>

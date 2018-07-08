@@ -25,6 +25,7 @@ class fieldtype_barcode
     $cfg[] = array('title'=>TEXT_HIDE_FIELD_IF_EMPTY, 'name'=>'hide_field_if_empty','type'=>'checkbox','tooltip_icon'=>TEXT_HIDE_FIELD_IF_EMPTY_TIP);
     
     $cfg[] = array('title'=>TEXT_IS_UNIQUE_FIELD_VALUE, 'name'=>'is_unique','type'=>'checkbox','tooltip_icon'=>TEXT_IS_UNIQUE_FIELD_VALUE_TIP);
+    $cfg[] = array('title'=>TEXT_ERROR_MESSAGE, 'name'=>'unique_error_msg','type'=>'input','tooltip_icon'=>TEXT_UNIQUE_FIELD_VALUE_ERROR_MSG_TIP,'tooltip'=>TEXT_DEFAULT . ': ' . TEXT_UNIQUE_FIELD_VALUE_ERROR,'params'=>array('class'=>'form-control input-xlarge'));
         
     $cfg[] = array('title'=>TEXT_HEIGHT, 'name'=>'height','type'=>'input','tooltip_icon'=>TEXT_FIELDTYPE_BARCODE_HEIGHT_TIP,'params'=>array('class'=>'form-control input-small'));
     
@@ -49,6 +50,8 @@ class fieldtype_barcode
                                  ($cfg->get('is_unique')==1 ? ' is-unique':'') .  
     		                         (strlen($cfg->get('template')) ? ' atuogenerate-value-by-template':'')
                                 );
+    
+    $attributes = fields_types::prepare_uniquer_error_msg_param($attributes,$cfg);
     
     if(strlen($cfg->get('template')))
     {

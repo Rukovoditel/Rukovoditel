@@ -10,11 +10,23 @@ class users
   static public function get_cache()
   {
     global $app_choices_cache, $app_users_cache;
+    
+    
+    $include_public_profile = false;
+    
+    //include public profile for page where it needs only
+    if(isset($_GET['module']))
+    {
+    	if(in_array($_GET['module'],array('items/listing','items/info','items/comments_listing')))
+    	{
+    		$include_public_profile = true;
+    	}
+    }
      
     $public_profile_fields = array();
     
     //get public profile fields
-    if(defined('CFG_PUBLIC_USER_PROFILE_FIELDS'))
+    if(defined('CFG_PUBLIC_USER_PROFILE_FIELDS') and $include_public_profile)
     {
       if(strlen(CFG_PUBLIC_USER_PROFILE_FIELDS)>0)
       {
@@ -51,12 +63,13 @@ class users
                                   'field'=>$field,
                                   'item'=>$users,
                                   'is_listing'=>true,
-                                  'is_export' => true,
-                                  'choices_cache'=>$app_choices_cache,
-                                  'users_cache'=>$app_users_cache,
+                                  'is_export' => true,                                  
                                   'redirect_to' => '',
                                   'reports_id'=> 0,
                                   'path'=> 1);
+          
+          //fix notice in cron
+          if(!defined('TEXT_' . strtoupper($field['type']) . '_TITLE') and defined('IS_CRON')) define('TEXT_' . strtoupper($field['type']) . '_TITLE','');          
                                   
           $profile_fields[] = array('name'=> $field['name'],'value'=>fields_types::output($output_options));
         }
@@ -89,22 +102,39 @@ class users
   
   static public function get_assigned_users_by_item($entity_id, $item_id)
   {
-    $users_fields = array(); 
-    
-    $fields_query = db_query("select f.* from app_fields f where f.type in ('fieldtype_users') and  f.entities_id='" . db_input($entity_id) . "'");
-    while($fields = db_fetch_array($fields_query))
-    {            
-      $users_fields[] = $fields['id'];
-    }
+  	
+    $users = array(); 
     
     $item_info = db_find('app_entity_' . $entity_id,$item_id);
     
-    foreach($users_fields as $id)
-    {
-      $users_fields = array_merge(explode(',',$item_info['field_' . $id]),$users_fields);
-    } 
-    
-    return $users_fields;
+    $fields_query = db_query("select f.* from app_fields f where f.type in ('fieldtype_users','fieldtype_grouped_users') and  f.entities_id='" . db_input($entity_id) . "'");
+    while($fields = db_fetch_array($fields_query))
+    {    
+    	switch($fields['type'])
+    	{
+    		case 'fieldtype_users':
+    			if(strlen($item_info['field_' . $fields['id']]))
+    			{
+    				$users = array_merge(explode(',',$item_info['field_' . $fields['id']]),$users);
+    			}
+    			break;
+    		case 'fieldtype_grouped_users':
+    			if(strlen($choices_id = $item_info['field_' . $fields['id']]))
+    			{
+    				$choices_query = db_query("select * from app_fields_choices where id='" .$choices_id  . "'");
+    				if($choices = db_fetch_array($choices_query))
+    				{
+    					if(strlen($choices['users']))
+    					{
+    						$users = array_merge(explode(',',$choices['users']),$users);
+    					}
+    				}
+    			}
+    			break;
+    	}      
+    }
+   
+    return $users;
   }
   
   static public function get_name_by_id($id)
@@ -134,6 +164,8 @@ class users
     {
       $photo = '<img src=' . url_for_file('images/' . 'no_photo.png') . ' width=50>';
     }
+    
+    if(!isset($users_cache['profile'])) $users_cache['profile'] = array();
             
     $content = '
       <table align=center>
@@ -227,12 +259,14 @@ class users
   {
     global $app_user;
     
+    
+    
     foreach($send_to as $users_id)
     {
       if(CFG_EMAIL_COPY_SENDER==0 and $users_id==$app_user['id']) continue;
-      
+                  
       $users_info_query = db_query("select * from app_entity_1 where id='" . db_input($users_id) . "' and field_5=1");
-      if($users_info = db_fetch_array($users_info_query))
+      if($users_info = db_fetch_array($users_info_query) and isset($app_user['email']))
       {
         $options = array('to'       =>$users_info['field_9'],
                          'to_name'  =>$users_info['field_7'] . ' ' . $users_info['field_8'],
@@ -240,7 +274,8 @@ class users
                          'body'     =>$body,
                          'from'     =>$app_user['email'],
                          'from_name'=>$app_user['name']);
-                         
+         
+                
         users::send_email($options);
       }
       
@@ -275,87 +310,99 @@ class users
     	
     	return true;
     }
+           
+    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
     
-    $mail = new PHPMailer;
+    try 
+    {    	    
+	    $mail->CharSet = "UTF-8";
+	    $mail->setLanguage(APP_LANGUAGE_SHORT_CODE);
+	    
+	    if(CFG_EMAIL_USE_SMTP==1)
+	    {
+	      $mail->isSMTP();                          // Set mailer to use SMTP
+	      $mail->Host = CFG_EMAIL_SMTP_SERVER;      // Specify main and backup server
+	      $mail->Port = CFG_EMAIL_SMTP_PORT;
+	      
+	      if(strlen(CFG_EMAIL_SMTP_LOGIN)>0 or strlen(CFG_EMAIL_SMTP_PASSWORD))
+	      {
+	        $mail->SMTPAuth = true;                               // Enable SMTP authentication
+	        $mail->Username = CFG_EMAIL_SMTP_LOGIN;               // SMTP username
+	        $mail->Password = CFG_EMAIL_SMTP_PASSWORD;            // SMTP password
+	      }
+	      else
+	      {      	
+	      	$mail->SMTPAuth = false;
+	      }
+	      
+	      if(strlen(CFG_EMAIL_SMTP_ENCRYPTION)>0)
+	      {
+	        $mail->SMTPSecure = CFG_EMAIL_SMTP_ENCRYPTION;        // Enable encryption, 'ssl' also accepted
+	      }
+	    }
+	    
+	    if(isset($options['force_send_from']))
+	    {
+	    	$mail->From = $options['from'];
+	    	$mail->FromName = $options['from_name'];
+	    }
+	    elseif(CFG_EMAIL_SEND_FROM_SINGLE==1)
+	    {
+	      $mail->From = CFG_EMAIL_ADDRESS_FROM;
+	      $mail->FromName = CFG_EMAIL_NAME_FROM;
+	    }
+	    else
+	    {  
+	      $mail->From = $options['from'];
+	      $mail->FromName = $options['from_name'];
+	    }
+	                
+	    $mail->addAddress($options['to'], $options['to_name']);  // Add a recipient
+	    
+	    $mail->WordWrap = 50;                                 // Set word wrap to 50 characters
+	    if(isset($options['attachments']))
+	    {  
+	      foreach($options['attachments'] as $filename=>$name)
+	      {  
+	      	if(is_file($filename))
+	      	{
+	        	$mail->addAttachment($filename, $name);
+	      	}
+	      }
+	    }
+	    	    	    	    
+	    $mail->isHTML(true);                                  // Set email format to HTML
+	    
+	    $mail->Subject = (strlen(CFG_EMAIL_SUBJECT_LABEL)>0 ? CFG_EMAIL_SUBJECT_LABEL . ' ': '') . $options['subject'];
+	    $mail->Body    = $options['body'];
+	    
+	    $h2t = new html2text($options['body']);    
+	    $mail->AltBody = $h2t->get_text();
+	    
+	    $mail->send();
     
-    $mail->CharSet = "UTF-8";
-    $mail->setLanguage(APP_LANGUAGE_SHORT_CODE);
-    
-    if(CFG_EMAIL_USE_SMTP==1)
-    {
-      $mail->isSMTP();                          // Set mailer to use SMTP
-      $mail->Host = CFG_EMAIL_SMTP_SERVER;      // Specify main and backup server
-      $mail->Port = CFG_EMAIL_SMTP_PORT;
-      
-      if(strlen(CFG_EMAIL_SMTP_LOGIN)>0 or strlen(CFG_EMAIL_SMTP_PASSWORD))
-      {
-        $mail->SMTPAuth = true;                               // Enable SMTP authentication
-        $mail->Username = CFG_EMAIL_SMTP_LOGIN;               // SMTP username
-        $mail->Password = CFG_EMAIL_SMTP_PASSWORD;            // SMTP password
-      }
-      else
-      {      	
-      	$mail->SMTPAuth = false;
-      }
-      
-      if(strlen(CFG_EMAIL_SMTP_ENCRYPTION)>0)
-      {
-        $mail->SMTPSecure = CFG_EMAIL_SMTP_ENCRYPTION;        // Enable encryption, 'ssl' also accepted
-      }
-    }
-    
-    if(CFG_EMAIL_SEND_FROM_SINGLE==1)
-    {
-      $mail->From = CFG_EMAIL_ADDRESS_FROM;
-      $mail->FromName = CFG_EMAIL_NAME_FROM;
-    }
-    else
-    {  
-      $mail->From = $options['from'];
-      $mail->FromName = $options['from_name'];
-    }
-                
-    $mail->addAddress($options['to'], $options['to_name']);  // Add a recipient
-    
-    $mail->WordWrap = 50;                                 // Set word wrap to 50 characters
-    if(isset($options['attachments']))
-    {  
-      foreach($options['attachments'] as $filename=>$name)
-      {  
-        $mail->addAttachment($filename, $name);
-      }
-    }
-    $mail->isHTML(true);                                  // Set email format to HTML
-    
-    $mail->Subject = (strlen(CFG_EMAIL_SUBJECT_LABEL)>0 ? CFG_EMAIL_SUBJECT_LABEL . ' ': '') . $options['subject'];
-    $mail->Body    = $options['body'];
-    
-    $h2t = new html2text($options['body']);    
-    $mail->AltBody = $h2t->get_text();;
-    
-    if(!$mail->send()) 
-    {   
+    } 
+    catch (Exception $e) 
+    {    	
     	if(is_object($alerts))
     	{
-       	$alerts->add(sprintf(TEXT_MAILER_ERROR,$options['to']) . ': ' . $mail->ErrorInfo,'error');
+    		$alerts->add(sprintf(TEXT_MAILER_ERROR,$options['to']) . ': ' . $mail->ErrorInfo,'error');
     	}
-    	else 
+    	else
     	{
     		error_log(date("Y-m-d H:i:s") . ' Error sending message to ' . $options['to'] . ': '  . $mail->ErrorInfo ."\n", 3,"log/Email_Errors_" . date("M_Y") . ".txt");
     	}
-       
-       return false;
+    	
+    	return false;
     }
-    else
-    {
-      return true;
-    }
+    
+    return true;
   }
   
   
   static public function get_random_password($length = CFG_PASSWORD_MIN_LENGTH)
   {        
-    $chars = "~!@#$%^&*()_+abcdefghijkmnopqrstuvwxyz023456789ABCDEFGHIJKMNOPQRSTUVWXYZ";
+    $chars = "~!@#$%^&*()_+abcdefghijkmnopqrstuvwxyz0123456789ABCDEFGHIJKMNOPQRSTUVWXYZ";
 
     $password = '' ;
     
@@ -392,6 +439,64 @@ class users
     return $access_schema;
   }
   
+  static public function get_users_access_schema($access_groups_id)
+  {  	  	
+  	$access_schema = array();
+  
+  	$acess_info_query = db_query("select * from app_entities_access where access_groups_id='" . db_input($access_groups_id) . "'");
+  	while($acess_info = db_fetch_array($acess_info_query))
+  	{
+  		if(strlen($acess_info['access_schema']))
+  		{
+  			$access_schema[$acess_info['entities_id']] = explode(',',$acess_info['access_schema']);
+  		}
+  	}
+  
+  	return $access_schema;
+  }
+  
+  
+  static public function has_users_access_name_to_entity($access,$entities_id)
+  {
+  	global $app_users_access, $app_user;
+  	
+  	//administrator have full access
+  	if($app_user['group_id']==0)
+  	{
+  		if($access=='action_with_assigned')
+  		{
+  			return false;
+  		}
+  		else
+  		{
+  			return true;
+  		}
+  	}
+  
+  	if(isset($app_users_access[$entities_id]))
+  	{
+  		return in_array($access,$app_users_access[$entities_id]);  		  		
+  	}
+  	else
+  	{
+  		return false;
+  	}
+  }
+  
+  static public function has_users_access_to_entity($entities_id)
+  {
+  	global $app_users_access, $app_user;
+  	  	
+  	if(isset($app_users_access[$entities_id]) or $app_user['group_id']==0)
+  	{  		
+  		return true;
+  	}
+  	else 
+  	{
+  		return false;  		
+  	}  	
+  }
+  
   static public function get_entities_access_schema_by_groups($entities_id)
   {
     $access_schema = array();
@@ -412,7 +517,14 @@ class users
     //administrator have full access
     if($app_user['group_id']==0)
     {
-      return true;
+    	if($access=='action_with_assigned')
+    	{
+    		return false;
+    	}
+    	else
+    	{
+      	return true;
+    	}
     }
             
     if(isset($access_schema))
@@ -425,6 +537,31 @@ class users
     }
     
     return in_array($access,$schema);
+  }
+  
+  static public function has_access_to_entity($entities_id,$access,$access_groups_id=null)
+  {
+  	global $app_user;
+  	
+  	$access_schema = array();
+  	
+  	if(!isset($access_groups_id))
+  	{
+  		$access_groups_id = $app_user['group_id'];
+  	}
+  	
+  	if($access_groups_id==0)
+  	{
+  		return true;  		
+  	}
+  	
+  	$acess_info_query = db_query("select access_schema from app_entities_access where entities_id='" . db_input($entities_id) . "' and access_groups_id='" . db_input($access_groups_id) . "'");
+  	if($acess_info = db_fetch_array($acess_info_query))
+  	{
+  		$access_schema = explode(',',$acess_info['access_schema']);
+  	}
+  	
+  	return in_array($access,$access_schema);
   }
   
   static public function has_access_to_assigned_item($entities_id, $items_id)

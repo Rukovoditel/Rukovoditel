@@ -1,16 +1,36 @@
 
-<?php $template_info = db_find('app_ext_export_templates',$_GET['templates_id'])?>
+
 <?php echo ajax_modal_template_header($template_info['name']) ?>
 
 <?php echo form_tag('export-form', url_for('items/export_template','path=' . $_GET['path'] . '&templates_id=' . $_GET['templates_id'])) . input_hidden_tag('action','export')  ?>
 
 <div class="modal-body ajax-modal-width-790">    
 
-<?php echo export_templates::get_html($current_entity_id, $current_item_id,$_GET['templates_id'])?>
+<div id="export_templates_preview">	
+	<style>
+		<?php echo $template_info['template_css'] ?>
+	</style>
+		
+	<?php echo export_templates::get_html($current_entity_id, $current_item_id,$_GET['templates_id'])?>	
+</div>
 
-<p><?php 
-  echo TEXT_FILENAME . '<br>' . input_tag('filename',$template_info['name'] . ' ' . $current_item_id,array('class'=>'form-control input-large')) 
-?></p>
+<p>
+<?php
+	if(strlen($template_info['template_filename']))
+	{		       
+    $item = items::get_info($current_entity_id, $current_item_id);
+    
+		$pattern = new fieldtype_text_pattern;
+		$filename = $pattern->output_singe_text($template_info['template_filename'], $current_entity_id, $item);
+	}
+	else
+	{
+		$filename = $template_info['name'] . ' ' . $current_item_id;
+	}
+
+  echo TEXT_FILENAME . '<br>' . input_tag('filename',$filename,array('class'=>'form-control input-xlarge')); 
+?>
+</p>
 
 <div><?php echo TEXT_EXT_PRINT_BUTTON_PDF_NOTE ?></div>
 </div> 

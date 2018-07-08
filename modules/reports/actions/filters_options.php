@@ -12,15 +12,14 @@ if(in_array($field_info['type'],array('fieldtype_created_by','fieldtype_parent_i
 }
 else
 {
-  $condition_array = array('include'=>TEXT_CONDITION_INCLUDE,'exclude'=>TEXT_CONDITION_EXCLUDE,'empty_value' => TEXT_CONDITION_EMPTY_VALUE);
+  $condition_array = array('include'=>TEXT_CONDITION_INCLUDE,'exclude'=>TEXT_CONDITION_EXCLUDE,'empty_value' => TEXT_CONDITION_EMPTY_VALUE,'not_empty_value' => TEXT_CONDITION_NOT_EMPTY_VALUE);
 }
 
 $condition_html = '
   <div class="form-group">
-  	<label class="col-md-3 control-label" for="filters_condition">' . TEXT_FILTERS_CONDITION . '</label>
+  	<label class="col-md-3 control-label" for="filters_condition">' . tooltip_icon(TEXT_FILTERS_CONDITION_TOOLTIP) .  TEXT_FILTERS_CONDITION . '</label>
     <div class="col-md-9">	
-  	  ' . select_tag('filters_condition',$condition_array,$filter_info['filters_condition'],array('class'=>'form-control input-medium')) . '
-      ' .tooltip_text(TEXT_FILTERS_CONDITION_TOOLTIP) . '
+  	  ' . select_tag('filters_condition',$condition_array,$filter_info['filters_condition'],array('class'=>'form-control input-medium')) . '      
     </div>			
   </div>  
 ';  
@@ -108,10 +107,10 @@ switch($field_info['type'])
         $listing_sql_query .= " and e.parent_item_id='" . db_input($parent_entity_item_id) . "'";
       }
         
-      $default_reports_query = db_query("select * from app_reports where entities_id='" . db_input($cfg['entity_id']). "' and reports_type='default'");
+      $default_reports_query = db_query("select * from app_reports where entities_id='" . db_input($cfg['entity_id']). "' and reports_type='entityfield" . $field_info['id'] . "'");
       if($default_reports = db_fetch_array($default_reports_query))
       {                
-        $listing_sql_query = reports::add_filters_query($_POST['reports_id'],$listing_sql_query);
+        $listing_sql_query = reports::add_filters_query($default_reports['id'],$listing_sql_query);
         
         $info = reports::add_order_query($_POST['listing_order_fields'],$cfg['entity_id']);
         $listing_sql_query .= $info['listing_sql_query'];
@@ -171,10 +170,12 @@ switch($field_info['type'])
 
       
     break;
+  case 'fieldtype_autostatus':
   case 'fieldtype_checkboxes':
   case 'fieldtype_radioboxes':
   case 'fieldtype_dropdown':
   case 'fieldtype_dropdown_multiple':
+  case 'fieldtype_dropdown_multilevel':
   case 'fieldtype_grouped_users':
       
       $cfg = new fields_types_cfg($field_info['configuration']);
@@ -202,7 +203,7 @@ switch($field_info['type'])
             
     break;
   case 'fieldtype_boolean':
-      
+        	  		      
       $choices = fieldtype_boolean::get_choices($field_info);
       
       $html = $condition_html . 
@@ -212,7 +213,31 @@ switch($field_info['type'])
         	  ' . select_tag('values',$choices,$filter_info['filters_values'],array('class'=>'form-control input-small')) . '            
           </div>			
         </div>';                
-    break;  
+    break; 
+  case 'fieldtype_progress':
+    
+    	$cfg = new fields_types_cfg($field_info['configuration']);
+  	
+      $choices = array();          
+      $choices['0']='0%';                 
+      
+      for($i=$cfg->get('step');$i<=100;$i+=$cfg->get('step'))
+      {
+      	$choices[$i]=$i . '%';
+      }
+      
+      $attributes = array('class'=>'form-control chosen-select',
+      		'multiple'=>'multiple',
+      		'data-placeholder'=>TEXT_SELECT_SOME_VALUES);
+    
+    	$html = $condition_html .
+    	'<div class="form-group" id="filter-by-values">
+        	<label class="col-md-3 control-label" for="values">' . TEXT_FILTER_BY_VALUES. '</label>
+          <div class="col-md-9">
+        	  ' . select_tag('values[]',$choices,$filter_info['filters_values'],$attributes) . '
+          </div>
+        </div>';
+    	break;
   case 'fieldtype_created_by':
   case 'fieldtype_users':
                     
@@ -286,6 +311,7 @@ switch($field_info['type'])
   case 'fieldtype_input_numeric':
   case 'fieldtype_input_numeric_comments':
   case 'fieldtype_formula':
+  case 'fieldtype_js_formula':
   
       $html = '
           <div class="form-group">
@@ -303,7 +329,15 @@ switch($field_info['type'])
   case 'fieldtype_input_datetime':
   
       //own conditions for date fields
-      $condition_array = array('filter_by_days'=>TEXT_FILTER_BY_DAYS,'filter_by_week'=>TEXT_FILTER_BY_WEEK,'filter_by_month'=>TEXT_FILTER_BY_MONTH,'filter_by_year' => TEXT_FILTER_BY_YEAR,'filter_by_overdue'=>TEXT_FILTER_BY_OVERDUE_DATE);
+      $condition_array = array(
+      	'filter_by_days'=>TEXT_FILTER_BY_DAYS,
+      	'filter_by_week'=>TEXT_FILTER_BY_WEEK,
+      	'filter_by_month'=>TEXT_FILTER_BY_MONTH,
+      	'filter_by_year' => TEXT_FILTER_BY_YEAR,
+      	'filter_by_overdue'=>TEXT_FILTER_BY_OVERDUE_DATE,
+      	'empty_value' => TEXT_CONDITION_EMPTY_VALUE,
+      	'not_empty_value' => TEXT_CONDITION_NOT_EMPTY_VALUE
+      );
       
       $condition_html = '
         <div class="form-group">
@@ -419,7 +453,9 @@ switch($field_info['type'])
     break;   
 }
 
-if(strlen($html))
+$is_internal = (isset($_POST['is_internal']) ? true : false);
+
+if(strlen($html) and !$is_internal)
 {
 	$html .= '
 		<div class="form-group">
@@ -434,7 +470,7 @@ $html .= '
   <script>
     function check_filters_condition()
     {
-      if($("#filters_condition").val()=="empty_value")
+      if($("#filters_condition").val()=="empty_value" || $("#filters_condition").val()=="not_empty_value")
       {
         $("#filter-by-values").hide()
       }

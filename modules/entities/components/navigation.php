@@ -54,7 +54,13 @@
 						<?php echo link_to(TEXT_NAV_FORM_CONFIG,url_for('entities/forms','entities_id=' . $_GET['entities_id'])) ?>
 					</li>
 					<li>
+						<?php echo link_to(TEXT_NAV_FORMS_FIELDS_DISPLAY_RULES,url_for('forms_fields_rules/rules','entities_id=' . $_GET['entities_id'])) ?>
+					</li>
+					<li>
 						<?php echo link_to(TEXT_NAV_LISTING_CONFIG,url_for('entities/listing','entities_id=' . $_GET['entities_id'])) ?>
+					</li>
+					<li>
+						<?php echo link_to(TEXT_NAV_ITEM_PAGE_CONFIG,url_for('entities/item_page_configuration','entities_id=' . $_GET['entities_id'])) ?>
 					</li>
 					<li>
 						<?php echo link_to(TEXT_NAV_LISTING_FILTERS_CONFIG,url_for('entities/listing_filters','entities_id=' . $_GET['entities_id'])) ?>
@@ -74,6 +80,9 @@
 					</li>
 					<li>
 						<?php echo link_to(TEXT_NAV_FIELDS_ACCESS,url_for('entities/fields_access','entities_id=' . $_GET['entities_id'])) ?>
+					</li>
+					<li>
+						<?php echo link_to(TEXT_NAV_ACCESS_RULES,url_for('access_rules/fields','entities_id=' . $_GET['entities_id'])) ?>
 					</li>
 				</ul>
 			</li>

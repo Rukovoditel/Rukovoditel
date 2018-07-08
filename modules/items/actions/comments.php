@@ -4,12 +4,14 @@ switch($app_module_action)
 {
 
   case 'save':
+  		$access_rules = new access_rules($current_entity_id, $current_item_id);
+  	
       //checking access
-      if(isset($_GET['id']) and !users::has_comments_access('update'))
+      if(isset($_GET['id']) and !users::has_comments_access('update', $access_rules->get_comments_access_schema()))
       {        
         redirect_to('dashboard/access_forbidden');
       }
-      elseif(!users::has_comments_access('create'))
+      elseif(!users::has_comments_access('create', $access_rules->get_comments_access_schema()))
       {
         redirect_to('dashboard/access_forbidden');
       }
@@ -77,6 +79,11 @@ switch($app_module_action)
                                      'current_field_value'=>'');
             
             $fields_value = fields_types::process($process_options);
+            
+            if(in_array($field['type'],array('fieldtype_input_date','fieldtype_input_datetime')) and $fields_value==0)
+            {
+            	$fields_value='';
+            }
              
             if(strlen($fields_value)>0)
             {                             
@@ -101,22 +108,63 @@ switch($app_module_action)
             }
           }
           
+          //get item info befor update
+          $item_info_query = db_query("select * from app_entity_" . $current_entity_id . " where id='" . $current_item_id . "'");
+          $item_info = db_fetch_array($item_info_query);
+          
+          //update item if there are fiedls to change
           if(count($sql_data)>0)
-          {
+          {          	          	
             db_perform('app_entity_' . $current_entity_id,$sql_data,'update',"id='" . db_input($current_item_id) . "'");
-          }                             
+                        
+            $app_changed_fields = array();
+            
+            //atuoset fieldtype autostatus
+            fieldtype_autostatus::set($current_entity_id, $current_item_id);
+            
+            //autostatus insert change in history if exist
+            foreach($app_changed_fields as $field)
+            {
+            	db_perform('app_comments_history',array('comments_id'=>$comments_id,'fields_id'=>$field['fields_id'],'fields_value'=>$field['fields_value']));
+            }
+          }
+                    
+          //check public form notification
+          //using $item_info as item with previous values
+          if(class_exists('public_forms'))
+          {
+          	public_forms::send_client_notification($current_entity_id, $item_info,true);
+          }
+          
+          //sending sms
+          if(class_exists('sms'))
+          {
+          	$modules = new modules('sms');
+          	$sms = new sms($current_entity_id, $current_item_id);
+          	$sms->send_to = false;
+          	$sms->send_edit_msg($item_info);
+          }
         } 
         
         
         //send notificaton
         app_send_new_comment_notification($comments_id,$current_item_id,$current_entity_id);
+        
+        //track changes
+        if(class_exists('track_changes'))
+        {
+        	$log = new track_changes($current_entity_id, $current_item_id);
+        	$log->log_comment($comments_id,(isset($_POST['fields']) ? $_POST['fields']: array()));
+        }
                         
       }
       
       redirect_to('items/info','path=' . $_POST['path']);      
     break;
   case 'delete':
-      if(!users::has_comments_access('delete'))
+  		$access_rules = new access_rules($current_entity_id, $current_item_id);
+  	
+      if(!users::has_comments_access('delete', $access_rules->get_comments_access_schema()))
       {
         redirect_to('dashboard/access_forbidden');
       }

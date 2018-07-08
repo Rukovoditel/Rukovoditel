@@ -22,7 +22,7 @@ class fieldtype_input_file
       ';
     }
                 
-   return input_file_tag('fields[' . $field['id'] . ']',array('class'=>'form-control input-large fieldtype_input_file' . (($field['is_required']==1 and $params['is_new_item']) ? ' required':''))) . $html;   
+   return input_file_tag('fields[' . $field['id'] . ']',array('class'=>'form-control input-large fieldtype_input_file' . (($field['is_required']==1 and !strlen($filename)) ? ' required':''))) . $html;   
    
   }
   
@@ -40,6 +40,13 @@ class fieldtype_input_file
         unlink(DIR_WS_ATTACHMENTS . $file['folder']  .'/' . $file['file_sha1']);
       }
       
+      //delete files from file storage
+      if(class_exists('file_storage'))
+      {
+      	$file_storage = new file_storage();
+      	$file_storage->delete_files($field_id, array($file['file']));
+      }
+                  
       return '';
     }
     
@@ -52,6 +59,13 @@ class fieldtype_input_file
       {      
       	//autoresize images if enabled
       	attachments::resize(DIR_WS_ATTACHMENTS  . $file['folder']  .'/'. $file['file']);
+      	
+      	//add file to queue
+      	if(class_exists('file_storage'))
+      	{
+      		$file_storage = new file_storage();
+      		$file_storage->add_to_queue($field_id, $file['name']);
+      	}
       	
         return $file['name'];
       }
@@ -75,16 +89,30 @@ class fieldtype_input_file
     
     if(strlen($options['value'])>0)
     {  
+    	$use_file_storage = false;
+    	
+    	//check if field using file storage
+    	if(class_exists('file_storage'))
+    	{
+    		$use_file_storage = file_storage::check($options['field']['id']);
+    	}
+    	
+    	
       $file = attachments::parse_filename($options['value']);
-                
-      if(isset($options['is_export']))
+      
+      if(isset($options['is_public_form']))
+      {
+      	return link_to($file['name'],url_for('ext/public/check','action=download_attachment&id=' . $options['is_public_form'] . '&item=' . $options['item']['id'] . '&field=' . $options['field']['id'] . '&file=' . urlencode(base64_encode($options['value'])) . '&field=' . $options['field']['id']),array('target'=>'_blank')) . (!$use_file_storage ? '  <small>(' . $file['size']. ')</small>' : '');
+      }
+      elseif(isset($options['is_export']))
       {
         return $file['name'];    
       }
       else
       {         
-        return '<img src="' . $file['icon'] . '"> ' . link_to($file['name'],url_for('items/info','path=' . $options['path'] . '&action=download_attachment&file=' . urlencode(base64_encode($options['value']))),array('target'=>'_blank')) . '  <small>(' . $file['size']. ')</small>';
+        return '<img src="' . $file['icon'] . '"> ' . link_to($file['name'],url_for('items/info','path=' . $options['path'] . '&action=download_attachment&file=' . urlencode(base64_encode($options['value'])) . '&field=' . $options['field']['id']),array('target'=>'_blank')) . (!$use_file_storage ? ' <small>(' . $file['size']. ')</small>':'');
       }
+    	
     }
     else
     {

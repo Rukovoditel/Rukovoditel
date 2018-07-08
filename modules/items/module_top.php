@@ -97,17 +97,37 @@ $current_access_schema = users::get_entities_access_schema($current_entity_id,$a
 //get comments access schema for current entity
 $current_comments_access_schema = users::get_comments_access_schema($current_entity_id,$app_user['group_id']);
 
-//checking view access
-if(!users::has_access('view') and  !users::has_access('view_assigned'))
-{
-  redirect_to('dashboard/access_forbidden');
-}
 
-//check assigned access
-if(users::has_access('view_assigned') and $app_user['group_id']>0 and $current_item_id>0)
+if(in_array($app_module_action,array('preview_attachment_exel','preview_attachment_image','download_attachment')) and $current_entity_id==1 and $current_item_id==$app_user['id'])
 {
-  if(!users::has_access_to_assigned_item($current_entity_id,$current_item_id))
-  {
-    redirect_to('dashboard/access_forbidden'); 
-  }
+	//allows access to download attachment from my account page	
+}	
+else 
+{
+	//checking view access
+	if(!users::has_access('view') and  !users::has_access('view_assigned'))
+	{
+	  redirect_to('dashboard/access_forbidden');
+	}
+	
+	//check assigned access
+	if(users::has_access('view_assigned') and $app_user['group_id']>0 and $current_item_id>0)
+	{
+	  if(!users::has_access_to_assigned_item($current_entity_id,$current_item_id))
+	  {
+	    redirect_to('dashboard/access_forbidden'); 
+	  }
+	}
+				
+	//check assigned access only
+	if(users::has_access('action_with_assigned') and $app_user['group_id']>0 and 
+			(($app_module_path=='items/items' and strlen($app_module_action)) or
+			$app_module_path=='items/form'))
+	{
+		
+		if(!users::has_access_to_assigned_item($current_entity_id,$current_item_id) and $current_item_id>0)
+		{			
+			redirect_to('dashboard/access_forbidden');
+		}
+	}
 }

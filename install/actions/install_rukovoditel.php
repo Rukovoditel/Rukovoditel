@@ -65,7 +65,7 @@ INSERT INTO app_configuration VALUES
 ('45','CFG_PUBLIC_USER_PROFILE_FIELDS','');
 
 INSERT INTO app_entity_1 VALUES
-('19','0','0','0','0',NULL,'0','" . $hasher->HashPassword($_POST['user_password']) . "','1','0','" . db_input($_POST['fields'][7]) . "','" . db_input($_POST['fields'][8]) . "','" . db_input($_POST['fields'][9]) . "','','" . db_input($_POST['fields'][12]) . "','" . $_GET['lng'] . ".php','blue');
+('1','0','0','0','" . time() . "',NULL,'0','" . $hasher->HashPassword($_POST['user_password']) . "','1','0','" . db_input($_POST['fields'][7]) . "','" . db_input($_POST['fields'][8]) . "','" . db_input($_POST['fields'][9]) . "','','" . db_input($_POST['fields'][12]) . "','" . $_GET['lng'] . ".php','blue');
 ";  
      
   $install_query .= $insert_query;
@@ -89,7 +89,7 @@ INSERT INTO app_entity_1 VALUES
   define('DB_SERVER_USERNAME', '" . $username . "');
   define('DB_SERVER_PASSWORD', '" . $password . "');
   define('DB_DATABASE', '" . $database. "');
-  
+  	  
   ";
     
   if(is_file('../config/database.php'))

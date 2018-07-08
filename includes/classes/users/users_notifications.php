@@ -74,6 +74,7 @@ class users_notifications
           {
             $("#user_notifications_report").load("' . url_for("dashboard/","action=update_user_notifications_report") . '",function(){
                 $(\'[data-hover="dropdown"]\').dropdownHover();
+            		app_handle_scrollers();
               })
           }
 		
@@ -95,10 +96,11 @@ class users_notifications
 	{
 		global $app_user, $app_users_cache;
 		
-		$poup_items_limit = 25;
+		$poup_items_limit = 10;
 		
 		$items_html = '';
 		
+		$itmes_display_count = 0;
 		$itmes_query = db_query("select * from app_users_notifications where users_id='" . $app_user['id'] . "' order by id desc limit " . $poup_items_limit);
 		while($itmes = db_fetch_array($itmes_query))
 		{
@@ -108,7 +110,9 @@ class users_notifications
           <li>
   					<a href="' . url_for('items/info','path=' . $path_info['full_path']) . '">' . self::render_icon_by_type($itmes['type']) . ' ' . $itmes['name'] . ' <span class="parent-name"><i class="fa fa-angle-left"></i>' . (isset($app_users_cache[$itmes['created_by']]) ? $app_users_cache[$itmes['created_by']]['name'] : '') . '</span></a>
   				</li>
-        ';			
+        ';
+			
+			$itmes_display_count++;
 		}
 				
 		$itmes_count = db_count('app_users_notifications',$app_user['id'],'users_id');
@@ -122,14 +126,14 @@ class users_notifications
         ';
 		}
 		
-		$dropdown_menu_height = ($itmes_count<11 ? ($itmes_count*42+42) : 420);
+		$dropdown_menu_height = ($itmes_display_count<11 ? ($itmes_display_count*42+42) : 420);
 		
 		$external_html = '';
-		if($itmes_count>$poup_items_limit)
+		if($itmes_count>0)
 		{
 			$external_html = '
           <li class="external">
-						<a href="' . url_for('users/notifications') . '">' . sprintf(TEXT_DISPLAY_NUMBER_OF_ITEMS,1, $poup_items_limit,$itmes_count) . '</a>
+						<a href="' . url_for('users/notifications') . '">' . sprintf(TEXT_DISPLAY_NUMBER_OF_ITEMS_OPEN_REPORT,$itmes_display_count) . '</a>
 					</li>
         ';
 		}

@@ -1,5 +1,5 @@
 <?php
-	if(in_array($app_user['group_id'], explode(',',CFG_APP_DISABLE_CHANGE_PWD)) and strlen(CFG_APP_DISABLE_CHANGE_PWD)>0)
+	if((in_array($app_user['group_id'], explode(',',CFG_APP_DISABLE_CHANGE_PWD)) and strlen(CFG_APP_DISABLE_CHANGE_PWD)>0) or CFG_USE_LDAP_LOGIN_ONLY==true)
 	{
 		redirect_to('users/account');
 	}	

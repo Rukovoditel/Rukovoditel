@@ -6,7 +6,7 @@ class fieldtype_user_status
   
   function __construct()
   {
-    $this->options = array('name' => TEXT_FIELDTYPE_USER_STATUS_TITLE);
+    $this->options = array('name' => TEXT_FIELDTYPE_USER_STATUS_TITLE,'title' => TEXT_FIELDTYPE_USER_STATUS_TITLE);
   }
   
   function render($field,$obj,$params = array())
@@ -24,7 +24,7 @@ class fieldtype_user_status
   
   function output($options)
   {
-    return ($options['value']==1 ? TEXT_ACTIVE : TEXT_INACTIVE);
+    return ($options['value']==1 ? '<span class="label label-success">' . TEXT_ACTIVE . '</span>' : '<span class="label label-default">' . TEXT_INACTIVE . '</span>');
   }
   
   function reports_query($options)

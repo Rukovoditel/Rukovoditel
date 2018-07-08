@@ -15,7 +15,19 @@
     $error_list[] = TEXT_ERROR_GD_LIB;
   }
   
-  $check_folders = array('../backups','../log','../uploads','../uploads/attachments','../uploads/users','../uploads/images');
+  //check mbstring
+  if (!extension_loaded('mbstring')) 
+  {
+  	$error_list[] = TEXT_ERROR_MBSTRING_LIB;
+  }
+  
+  //check xmlwriter
+  if (!extension_loaded('xmlwriter')) 
+  {
+  	$error_list[] = TEXT_ERROR_XMLWRITER_LIB;
+  }  
+  
+  $check_folders = array('../backups','../log','../uploads','../uploads/attachments','../uploads/users','../uploads/images','../cache');
   
   foreach($check_folders as $v)
   {

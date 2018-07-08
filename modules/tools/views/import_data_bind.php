@@ -9,7 +9,7 @@
 
 	$skip_fields = fields_types::get_reserverd_types_list();
 	
-	$skip_fields .= ",'fieldtype_entity','fieldtype_users','fieldtype_grouped_users','fieldtype_input_numeric_comments','fieldtype_input_file','fieldtype_attachments','fieldtype_related_records'";
+	$skip_fields .= ",'fieldtype_users','fieldtype_grouped_users','fieldtype_input_numeric_comments','fieldtype_input_file','fieldtype_attachments','fieldtype_related_records','fieldtype_parent_value'";
 	
 	if($_GET['entities_id']==1)
 	{

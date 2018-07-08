@@ -108,7 +108,12 @@ class fieldtype_boolean
       
       if($options['value']!=$options['current_field_value'] and $cfg->get('notify_when_changed')==1)
       {
-        $app_changed_fields[] = array('name'=>$options['field']['name'],'value'=>self::get_boolean_value($options['field'], $options['value']));
+        $app_changed_fields[] = array(
+        		'name'=>$options['field']['name'],
+        		'value'=>self::get_boolean_value($options['field'], $options['value']),
+        		'fields_id'=>$options['field']['id'],
+        		'fields_value'=>$options['value'],
+        );
       }
     }
   

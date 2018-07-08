@@ -705,3 +705,95 @@ ALTER TABLE `app_fields` ADD `comments_forms_tabs_id` INT NOT NULL DEFAULT '0' A
 ALTER TABLE `app_fields` ADD INDEX `idx_comments_forms_tabs_id` (`comments_forms_tabs_id`);
 ALTER TABLE `app_reports` ADD `displays_assigned_only` TINYINT(1) NOT NULL DEFAULT '0' AFTER `users_groups`;
 
+CREATE TABLE IF NOT EXISTS `app_forms_fields_rules` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `entities_id` int(10) UNSIGNED NOT NULL,
+  `fields_id` int(10) UNSIGNED NOT NULL,
+  `choices` text NOT NULL,
+  `visible_fields` text NOT NULL,
+  `hidden_fields` text NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_entities_id` (`entities_id`),
+  KEY `idx_fields_id` (`fields_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `app_reports` ADD `in_dashboard_icon` TINYINT(1) NOT NULL AFTER `in_dashboard_counter`, ADD `in_dashboard_counter_color` VARCHAR(16) NOT NULL AFTER `in_dashboard_icon`, ADD `in_dashboard_counter_fields` VARCHAR(255) NOT NULL AFTER `in_dashboard_counter_color`;
+ALTER TABLE `app_entities_access` CHANGE `access_schema` `access_schema` TEXT CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL;
+ALTER TABLE `app_reports` ADD `in_header_autoupdate` TINYINT(1) NOT NULL AFTER `in_header`;
+
+CREATE TABLE IF NOT EXISTS `app_users_alerts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `is_active` tinyint(1) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  `type` varchar(16) NOT NULL,
+  `location` varchar(16) NOT NULL,
+  `start_date` int(11) NOT NULL,
+  `end_date` int(11) NOT NULL,
+  `assigned_to` text NOT NULL,
+  `users_groups` text NOT NULL,
+  `created_by` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_created_by` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE IF NOT EXISTS `app_users_alerts_viewed` (
+  `users_id` int(11) NOT NULL,
+  `alerts_id` int(11) NOT NULL,
+  KEY `idx_ueser_alerts` (`users_id`,`alerts_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `app_fields_choices` ADD `value` VARCHAR(64) NOT NULL AFTER `users`;
+
+CREATE TABLE IF NOT EXISTS `app_access_rules` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `entities_id` int(10) UNSIGNED NOT NULL,
+  `fields_id` int(10) UNSIGNED NOT NULL,
+  `choices` text NOT NULL,
+  `users_groups` text NOT NULL,
+  `access_schema` text NOT NULL,
+  `fields_view_only_access` text NOT NULL,
+  `comments_access_schema` varchar(64) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_entities_id` (`entities_id`),
+  KEY `idx_fields_id` (`fields_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE IF NOT EXISTS `app_access_rules_fields` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `entities_id` int(10) UNSIGNED NOT NULL,
+  `fields_id` int(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_entities_id` (`entities_id`),
+  KEY `idx_fields_id` (`fields_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
+
+ALTER TABLE `app_entities_menu` ADD `reports_list` TEXT NOT NULL AFTER `entities_list`;
+
+CREATE TABLE IF NOT EXISTS `app_reports_groups` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `menu_icon` varchar(64) NOT NULL,
+  `in_menu` tinyint(1) NOT NULL,
+  `sort_order` smallint(6) NOT NULL,
+  `counters_list` text NOT NULL,
+  `reports_list` text NOT NULL,
+  `created_by` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_created_by` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE IF NOT EXISTS `app_reports_sections` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `created_by` int(11) NOT NULL,
+  `reports_groups_id` int(11) NOT NULL,
+  `report_left` varchar(64) NOT NULL,
+  `report_right` varchar(64) NOT NULL,
+  `sort_order` smallint(6) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_reports_groups_id` (`reports_groups_id`),
+  KEY `idx_created_by` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `app_access_groups` ADD `ldap_filter` VARCHAR(64) NOT NULL AFTER `is_ldap_default`;
+

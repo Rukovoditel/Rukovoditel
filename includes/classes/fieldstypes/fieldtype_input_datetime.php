@@ -25,6 +25,8 @@ class fieldtype_input_datetime
                    'type'=>'input-with-colorpicker',                   
                    'tooltip'=>TEXT_DAYS_BEFORE_DATE_TIP);
     
+    $cfg[] = array('title'=>TEXT_HIDE_FIELD_IF_EMPTY, 'name'=>'hide_field_if_empty','type'=>'checkbox','tooltip_icon'=>TEXT_HIDE_FIELD_IF_EMPTY_TIP);
+    
                               
     return $cfg;
   }
@@ -53,7 +55,7 @@ class fieldtype_input_datetime
   {
     global $app_changed_fields;
   	
-  	$value = get_date_timestamp($options['value']);
+  	$value = (int)get_date_timestamp($options['value']);
   	
   	if(!$options['is_new_item'])
   	{
@@ -61,7 +63,12 @@ class fieldtype_input_datetime
   	
   		if($value!=$options['current_field_value'] and $cfg->get('notify_when_changed')==1)
   		{
-  			$app_changed_fields[] = array('name'=>$options['field']['name'],'value'=>format_date_time($value));
+  			$app_changed_fields[] = array(
+  					'name'=>$options['field']['name'],
+  					'value'=>format_date_time($value),
+  					'fields_id'=>$options['field']['id'],
+  					'fields_value'=>$value
+  			);
   		}
   	}
   	
@@ -70,7 +77,7 @@ class fieldtype_input_datetime
     
   function output($options)
   {
-    if(isset($options['is_export']))
+    if(isset($options['is_export']) and strlen($options['value'])>0 and $options['value']!=0)
     {
       return format_date_time($options['value']);
     }

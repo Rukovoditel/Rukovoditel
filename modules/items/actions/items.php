@@ -1,13 +1,18 @@
-<?php
+<?php 
 
 switch($app_module_action)
 {  
   case 'save':
   
       //checking access
-      if(isset($_GET['id']) and !users::has_access('update'))
+      if(isset($_GET['id']))
       {        
-        redirect_to('dashboard/access_forbidden');
+      	$access_rules = new access_rules($current_entity_id, $_GET['id']);
+      	
+      	if(!users::has_access('update',$access_rules->get_access_schema()))
+      	{	
+        	redirect_to('dashboard/access_forbidden');
+      	}
       }
       elseif(!users::has_access('create') and !isset($_GET['id']))
       {
@@ -36,7 +41,10 @@ switch($app_module_action)
       {      
         $is_new_item = false;          
         $item_info_query = db_query("select * from app_entity_" . $current_entity_id . " where id='" . db_input($_GET['id']) . "'");
-        $item_info = db_fetch_array($item_info_query);                        
+        $item_info = db_fetch_array($item_info_query);  
+        
+        $access_rules = new access_rules($current_entity_id, $item_info);
+        $fields_access_schema += $access_rules->get_fields_view_only_access();
       }
       
       //prepare item data      
@@ -48,33 +56,51 @@ switch($app_module_action)
       while($field = db_fetch_array($fields_query))
       {
         $default_field_value = '';
-        
         //check field access and skip fields without access
         if(isset($fields_access_schema[$field['id']]))
-        { 
-          //for new item check if there is template field set and use it
-          if(!isset($_GET['id']) and isset($_POST['template_fields'][$field['id']]))
-          {
-            $default_field_value = $_POST['template_fields'][$field['id']];
-          }
-          //for new item check if there is default value and assign it if it's exist          
-          elseif(!isset($_GET['id']) and in_array($field['type'],fields_types::get_types_wich_choices()))
-          {            
-            $check_query = db_query("select id from app_fields_choices where fields_id='" . $field['id'] . "' and is_default=1");
-            if($check = db_fetch_array($check_query))
-            {
-              $default_field_value = $check['id'];                            
-            }
-            else
-            {
-              continue;
-            }
-          }
-          else
-          {
-            continue;
-          }
-        }                
+        {
+	        //for new item check if there is template field set and use it
+	        if(!isset($_GET['id']) and isset($_POST['template_fields'][$field['id']]))
+	        {
+	          $default_field_value = $_POST['template_fields'][$field['id']];
+	        }
+	        //for new item check if there is default value and assign it if it's exist          
+	        elseif(!isset($_GET['id']) and in_array($field['type'],fields_types::get_types_wich_choices()))
+	        {      
+	        	$cfg = new fields_types_cfg($field['configuration']);
+	        	
+	        	if($cfg->get('use_global_list')>0)
+	        	{
+	        		$check_query = db_query("select id from app_global_lists_choices where lists_id = '" . db_input($cfg->get('use_global_list')). "' and is_default=1");
+	        	}
+	        	else
+	        	{
+	        		$check_query = db_query("select id from app_fields_choices where fields_id='" . $field['id'] . "' and is_default=1");
+	        	}
+	        		          
+	          if($check = db_fetch_array($check_query))
+	          {
+	            $default_field_value = $check['id'];                            
+	          }
+	          else
+	          {
+	          	continue;
+	          }
+	        } 
+	        elseif(!isset($_GET['id']) and $field['type']=='fieldtype_user_accessgroups')
+	        {
+	        	$default_field_value = access_groups::get_default_group_id();        	
+	        }
+	        elseif(!isset($_GET['id']) and $field['type']=='fieldtype_user_status')
+	        {
+	        	$default_field_value = 1;
+	        }
+	        else
+	        {
+	        	continue;
+	        }
+	      }  
+        
         
         //submited field value
         $value = (isset($_POST['fields'][$field['id']]) ? $_POST['fields'][$field['id']] : $default_field_value);
@@ -98,9 +124,27 @@ switch($app_module_action)
       } 
                         
       if(isset($_GET['id']))
-      {                
+      {            	      	
+      	//update item
         db_perform('app_entity_' . $current_entity_id,$sql_data,'update',"id='" . db_input($_GET['id']) . "'");
-        $item_id = $_GET['id'];      
+        $item_id = $_GET['id'];
+        
+        //check public form notification 
+        //using $item_info as item with previous values 
+        if(class_exists('public_forms'))
+        {
+        	public_forms::send_client_notification($current_entity_id, $item_info);
+        }
+        
+        //sending sms
+        if(class_exists('sms'))
+        {
+        	$modules = new modules('sms');
+        	$sms = new sms($current_entity_id, $item_id);
+        	$sms->send_to = $app_send_to;
+        	$sms->send_edit_msg($item_info);
+        }
+                                
       }
       else
       { 
@@ -114,12 +158,39 @@ switch($app_module_action)
         $sql_data['created_by'] = $app_logged_users_id;
         $sql_data['parent_item_id'] = $parent_entity_item_id;
         db_perform('app_entity_' . $current_entity_id,$sql_data);
-        $item_id = db_insert_id();                
+        $item_id = db_insert_id();
+        
+        //sending sms
+        if(class_exists('sms'))
+        {
+        	$modules = new modules('sms');
+        	$sms = new sms($current_entity_id, $item_id);
+        	$sms->send_to = $app_send_to;
+        	$sms->send_insert_msg();
+        }
+        
       }
       
       
       //insert choices values for fields with multiple values
       $choices_values->process($item_id);
+            
+      //atuoset fieldtype autostatus
+      fieldtype_autostatus::set($current_entity_id, $item_id);
+      
+      
+      //log changeds
+      if(class_exists('track_changes'))
+      {
+      	$log = new track_changes($current_entity_id, $item_id);
+      	$log->log_prepare(isset($_GET['id']),$item_info);
+      }
+      
+      //atuocreate comments if fields changed
+      if(count($app_changed_fields))
+      {
+      	comments::add_comment_notify_when_fields_changed($current_entity_id, $item_id,$app_changed_fields);
+      }
                   
       /**
        * Start email notification code
@@ -139,12 +210,12 @@ switch($app_module_action)
         $breadcrumb = items::get_breadcrumb_by_item_id($current_entity_id, $item_id);
         $item_name = $breadcrumb['text'];
         
-        $cfg = entities::get_cfg($current_entity_id);
+        $entity_cfg = new entities_cfg($current_entity_id);
         
         //prepare subject for update itme      
         if(count($app_changed_fields)>0)
         {
-          $subject = (strlen($cfg['email_subject_updated_item'])>0 ? $cfg['email_subject_updated_item'] . ' ' . $item_name : TEXT_DEFAULT_EMAIL_SUBJECT_UPDATED_ITEM . ' ' . $item_name);
+          $subject = (strlen($entity_cfg->get('email_subject_updated_item'))>0 ? $entity_cfg->get('email_subject_updated_item') . ' ' . $item_name : TEXT_DEFAULT_EMAIL_SUBJECT_UPDATED_ITEM . ' ' . $item_name);
           
           //add changed field values in subject
           $extra_subject = array();
@@ -160,7 +231,7 @@ switch($app_module_action)
         else
         {       
           //subject for new item    
-          $subject = (strlen($cfg['email_subject_new_item'])>0 ? $cfg['email_subject_new_item'] . ' ' . $item_name : TEXT_DEFAULT_EMAIL_SUBJECT_NEW_ITEM . ' ' . $item_name);
+          $subject = (strlen($entity_cfg->get('email_subject_new_item'))>0 ? $entity_cfg->get('email_subject_new_item') . ' ' . $item_name : TEXT_DEFAULT_EMAIL_SUBJECT_NEW_ITEM . ' ' . $item_name);
           
           $users_notifications_type = 'new_item';
         }
@@ -177,8 +248,15 @@ switch($app_module_action)
         //start sending email                  
         foreach(array_unique($app_send_to) as $send_to)
         {             	        	        	
-          //prepare body          
-          $body = users::use_email_pattern('single',array('email_body_content'=>items::render_content_box($current_entity_id,$item_id,$send_to),'email_sidebar_content'=>items::render_info_box($current_entity_id,$item_id,$send_to)));
+          //prepare body  
+        	if($entity_cfg->get('item_page_details_columns','2')==1)
+        	{
+        		$body = users::use_email_pattern('single_column',array('email_single_column'=>items::render_info_box($current_entity_id,$item_id,$send_to, false)));
+        	}
+        	else 
+        	{
+          	$body = users::use_email_pattern('single',array('email_body_content'=>items::render_content_box($current_entity_id,$item_id,$send_to),'email_sidebar_content'=>items::render_info_box($current_entity_id,$item_id,$send_to)));
+        	}
                
           //echo $subject . $body;
           //exit();
@@ -186,7 +264,7 @@ switch($app_module_action)
           //change subject for new assigned user
           if(in_array($send_to,$app_send_to_new_assigned))
           {            
-            $new_subject = (strlen($cfg['email_subject_new_item'])>0 ? $cfg['email_subject_new_item'] . ' ' . $item_name : TEXT_DEFAULT_EMAIL_SUBJECT_NEW_ITEM . ' ' . $item_name);
+            $new_subject = (strlen($entity_cfg->get('email_subject_new_item'))>0 ? $entity_cfg->get('email_subject_new_item') . ' ' . $item_name : TEXT_DEFAULT_EMAIL_SUBJECT_NEW_ITEM . ' ' . $item_name);
             $new_heading = users::use_email_pattern_style('<div><a href="' . url_for('items/info','path=' . $_POST['path'] . '-' . $item_id,true) . '"><h3>' . $new_subject . '</h3></a></div>','email_heading_content');
             
             if(users_cfg::get_value_by_users_id($send_to, 'disable_notification')!=1)
@@ -220,6 +298,13 @@ switch($app_module_action)
       {
         exit();
       } 
+      
+      //set off redirect if add items from gantt reprot
+      if(strstr($app_redirect_to,'ganttreport'))
+      {
+      	require(component_path('items/items_form_gantt_submit_prepare'));      	
+      	exit();
+      }
                       
       //redirect to related item
       if(isset($_POST['related']))
@@ -236,17 +321,20 @@ switch($app_module_action)
         db_perform($table_info['table_name'],$sql_data);
             
         $path_info = items::get_path_info($related_entities_id,$related_items_id);
+        
+        //atuoset fieldtype autostatus
+        fieldtype_autostatus::set($related_entities_id, $related_items_id);
                       
         redirect_to('items/info','path=' . $path_info['full_path']); 
       }
-            
+                         
       //redirects after adding new item                  
       if(!isset($_GET['id']) and $app_redirect_to=='')
       {
       	$entity_cfg = new entities_cfg($current_entity_id);
       	
       	switch($entity_cfg->get('redirect_after_adding','subentity'))
-      	{
+      	{      		
       		case 'subentity':
       			if($app_user['group_id']==0)
       			{
@@ -274,17 +362,35 @@ switch($app_module_action)
       	$gotopage = '&gotopage[' . key($_POST['gotopage']). ']=' . current($_POST['gotopage']);
       }
       
+      //related records redirect
+      related_records::handle_app_redirect();
+      
       //other redirects      
       switch($app_redirect_to)
       {
+      	case 'parent_item_info_page':      	      		      
+      		redirect_to('items/info','path=' . app_path_get_parent_path($app_path));
+      		break;
         case 'dashboard':
             redirect_to('dashboard/',substr($gotopage,1));
           break;
         case 'items_info':
             redirect_to('items/info','path=' . $_POST['path']);
           break;
+        case 'parent_modal':
+        		echo $item_id;
+        		exit();
+        	break;
         default:
-            if(strstr($app_redirect_to,'report_'))
+	        	if(strstr($app_redirect_to,'kanban'))
+	        	{
+	        		redirect_to('ext/kanban/view','id='  . str_replace('kanban','',$app_redirect_to). '&path=' . $app_path);
+	        	}
+        	  elseif(strstr($app_redirect_to,'item_info_page'))
+        	  {
+        	  	redirect_to('items/info','path=' . str_replace('item_info_page','',$app_redirect_to));
+        	  }	        	  	
+            elseif(strstr($app_redirect_to,'report_'))
             {
               redirect_to('reports/view','reports_id=' . str_replace('report_','',$app_redirect_to) . $gotopage);
             }                                      
@@ -298,7 +404,9 @@ switch($app_module_action)
       
     break;  
   case 'delete':
-      if(!users::has_access('delete'))
+  		$access_rules = new access_rules($current_entity_id, $_GET['id']);
+  		
+      if(!users::has_access('delete',$access_rules->get_access_schema()))
       {
         redirect_to('dashboard/access_forbidden');
       }
@@ -314,15 +422,29 @@ switch($app_module_action)
       {
       	$gotopage = '&gotopage[' . key($_POST['gotopage']). ']=' . current($_POST['gotopage']);
       }
-            
+      
+      //related records redirect
+      related_records::handle_app_redirect();
+      
       switch($app_redirect_to)
       {
+      	case 'parent_item_info_page':
+      		redirect_to('items/info','path=' . app_path_get_parent_path($app_path));
+      		break;
         case 'dashboard':
             redirect_to('dashboard/',substr($gotopage,1));
           break;
         default:
-        
-            if(strstr($app_redirect_to,'report_'))
+                	
+            if(strstr($app_redirect_to,'kanban'))
+	        	{
+	        		redirect_to('ext/kanban/view','id='  . str_replace('kanban','',$app_redirect_to). '&path=' . $app_path);
+	        	}
+        	  elseif(strstr($app_redirect_to,'item_info_page'))
+        	  {
+        	  	redirect_to('items/info','path=' . str_replace('item_info_page','',$app_redirect_to));
+        	  }	        	  	
+            elseif(strstr($app_redirect_to,'report_'))
             {
               redirect_to('reports/view','reports_id=' . str_replace('report_','',$app_redirect_to) . $gotopage);
             }                                      
@@ -350,7 +472,14 @@ switch($app_module_action)
           	
             //add attachments to tmp table
             $sql_data = array('form_token'=>$verifyToken,'filename'=>$file['name'],'date_added'=>date('Y-m-d'),'container'=>$_GET['field_id']);
-            db_perform('app_attachments',$sql_data);                                                
+            db_perform('app_attachments',$sql_data);  
+            
+            //add file to queue
+            if(class_exists('file_storage'))
+            {
+            	$file_storage = new file_storage();
+            	$file_storage->add_to_queue($_GET['field_id'], $file['name']);
+            }
             
           }
         }
@@ -367,29 +496,29 @@ switch($app_module_action)
         while($attachments = db_fetch_array($attachments_query))
         {
           $attachments_list[] = $attachments['filename']; 
+          
+          if(!in_array($attachments['filename'],$uploadify_attachments_queue[$field_id])) $uploadify_attachments_queue[$field_id][] = $attachments['filename'];
         }
+        
+        $delete_file_url = url_for('items/items','action=attachments_delete_in_queue&path=' . $_GET['path']);
                      
-        echo attachments::render_preview($field_id, $attachments_list);
+        echo attachments::render_preview($field_id, $attachments_list,$delete_file_url);
         
       exit();
     break;
+ case 'attachments_delete_in_queue':
+    	//chck form token
+    	app_check_form_token();
+    
+    	attachments::delete_in_queue($_POST['field_id'], $_POST['filename']);
+    
+    	exit();
+    	break;
+    
     
   case 'check_unique':
-      
-  		$fields_value = $_POST['fields_value'];
-  		$field_info = db_find('app_fields',$_POST['fields_id']);
-  		
-  		switch($field_info['type'])
-  		{
-  			case 'fieldtype_input_date':
-  				$fields_value = get_date_timestamp($fields_value);
-  				break;
-  		}
-  		  		  		
-      $check_query = db_query("select count(*) as total from app_entity_" . $current_entity_id .  " where field_" . $field_info['id'] . "='" . db_input($fields_value)  . "'" . (isset($_GET["id"]) ? " and id!='" . db_input($_GET['id']) . "'":""));
-      $check = db_fetch_array($check_query);
-      
-      echo (int)$check['total']; 
+           
+      echo items::check_unique($current_entity_id,_post::int('fields_id'),$_POST['fields_value'],(isset($_GET["id"]) ? $_GET["id"]:false));
       
       exit();
     break;

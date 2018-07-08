@@ -89,18 +89,49 @@ class backup
 				$skip_insert = array('app_choices_values',
 						'app_comments',
 						'app_comments_history',
-						'app_related_items',
-						'app_reports',
-						'app_reports_filters',
+						'app_related_items',						
 						'app_sessions',
 						'app_users_configuration',
-						'app_users_filters',
-						'app_user_filters_values',
+						'app_users_notifications',
+						'app_users_search_settings',
+						'app_items_export_templates',
 						'app_ext_calendar_events',
-						'app_ext_timer');
+						'app_ext_timer',
+						'app_ext_chat_conversations',
+						'app_ext_chat_conversations_messages',
+						'app_ext_chat_messages',
+						'app_ext_chat_unread_messages',
+						'app_ext_chat_users_online',
+						'app_ext_file_storage_queue',
+						'app_ext_ganttchart_depends',
+						'app_ext_track_changes_log',
+						'app_ext_track_changes_log_fields',						
+				);
 				 
+				$reports_where_sql = " where (created_by='" . $app_user['id']. "' or reports_type in ('common','default','parent_item_info_page')) or LOCATE('entityfield',reports_type) or LOCATE('fields_choices',reports_type) or LOCATE('process',reports_type) or LOCATE('process_action',reports_type) or LOCATE('functions',reports_type)"; 
+				
+				//get reports
+				if($table == 'app_reports')
+				{
+					$where_sql = $reports_where_sql;
+				}
+				//get reports filters
+				elseif($table == 'app_reports_filters')
+				{
+					$where_sql = " where reports_id in (select id from app_reports " . $reports_where_sql . ")";
+				}
+				//users filters
+				elseif($table == 'app_users_filters')
+				{
+					$where_sql = " where users_id='" . $app_user['id']. "'";
+				}
+				//users filters
+				elseif($table == 'app_user_filters_values')
+				{
+					$where_sql = " where filters_id in (select id from app_users_filters where users_id='" . $app_user['id']. "')";
+				}
 				//get only current user
-				if($table=='app_entity_1')
+				elseif($table=='app_entity_1')
 				{
 					$where_sql = " where id='" . $app_user['id']. "'";
 				}

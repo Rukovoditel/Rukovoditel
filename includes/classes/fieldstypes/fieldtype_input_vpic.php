@@ -66,7 +66,14 @@ class fieldtype_input_vpic
   	}
   	else
   	{
-  		return '<a href="https://vpic.nhtsa.dot.gov/decoder/Decoder?VIN=' . $options['value'] . '" target="blank">' . $options['value']. '</a>';
+  		if($options['field']['is_heading'])
+  		{
+  			return $options['value'];
+  		}
+  		else
+  		{
+  			return '<a href="https://vpic.nhtsa.dot.gov/decoder/Decoder?VIN=' . $options['value'] . '" target="blank">' . $options['value']. '</a>';
+  		}
   	}
     
   }

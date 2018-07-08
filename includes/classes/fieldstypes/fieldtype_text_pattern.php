@@ -34,7 +34,7 @@ class fieldtype_text_pattern
   
   function output($options)
   {
-    global $app_user;
+    global $app_user, $app_entities_cache, $app_fields_cache, $fields_access_schema_holder, $parent_items_name_holder, $app_num2str;
     
     $html = '';
     
@@ -43,9 +43,16 @@ class fieldtype_text_pattern
     $entities_id = $options['field']['entities_id'];
     
     $item = $options['item'];
-            
-    $fields_access_schema = users::get_fields_access_schema($entities_id,$app_user['group_id']);
     
+    if(!isset($fields_access_schema_holder[$entities_id]))
+    {	
+     $fields_access_schema = $fields_access_schema_holder[$entities_id] = users::get_fields_access_schema($entities_id,$app_user['group_id']);
+    }
+    else
+    {
+    	$fields_access_schema = $fields_access_schema_holder[$entities_id];
+    }
+            
     if(isset($options['custom_pattern']))
     {
       $pattern = $options['custom_pattern'];
@@ -63,10 +70,20 @@ class fieldtype_text_pattern
       	$formulas_fields = false;
       	      	      
         foreach($matches[1] as $matches_key=>$fields_id)
-        {        
-            $field_query = db_query("select f.* from app_fields f where f.type not in ('fieldtype_action') and (f.id ='" . db_input($fields_id) . "' or type='fieldtype_" . db_input($fields_id) . "') and  f.entities_id='" . db_input($entities_id) . "'");
-            if($field = db_fetch_array($field_query))
-            {            
+        {                                
+            $field = false;
+            
+            if(isset($app_fields_cache[$entities_id]['fieldtype_' . $fields_id]))
+            {
+            	$field = $app_fields_cache[$entities_id]['fieldtype_' . $fields_id];
+            }
+            elseif(isset($app_fields_cache[$entities_id][$fields_id]))
+            {
+            	$field = $app_fields_cache[$entities_id][$fields_id]; 
+            }
+            
+            if($field)
+            {                	            	            	
               //check field access
               if(isset($fields_access_schema[$field['id']]))
               {
@@ -76,11 +93,18 @@ class fieldtype_text_pattern
               switch($field['type'])
               {
               	case 'fieldtype_parent_item_id':
-              			$enitites_info = db_find('app_entities',$entities_id);
+              			$enitites_info = $app_entities_cache[$entities_id];
               			
               			if($enitites_info['parent_id']>0 and $item['parent_item_id']>0)
               			{
-              				$value = items::get_heading_field($enitites_info['parent_id'],$item['parent_item_id']);
+              				if(!isset($parent_items_name_holder[$enitites_info['parent_id']][$item['parent_item_id']]))
+              				{
+              					$value = $parent_items_name_holder[$enitites_info['parent_id']][$item['parent_item_id']] = items::get_heading_field($enitites_info['parent_id'],$item['parent_item_id']);
+              				}
+              				else
+              				{
+              					$value = $parent_items_name_holder[$enitites_info['parent_id']][$item['parent_item_id']];
+              				}
               			}
               			else 
               			{
@@ -98,6 +122,7 @@ class fieldtype_text_pattern
                     $value = $item['id'];
                   break;
                 case 'fieldtype_formula':
+                	                		
                   	//check if formula value exist in item and if not then do extra query to calcualte it
                   	if(strlen($item['field_' . $field['id']])==0)
                   	{
@@ -125,6 +150,7 @@ class fieldtype_text_pattern
                                   'field'=>$field,
                                   'item'=>$item,
                                   'is_export'=>true,                              
+              										'is_print'=>true,
                                   'path'=>$options['path']);
                                                                                                                                                     
               if(in_array($field['type'],array('fieldtype_textarea_wysiwyg')))
@@ -155,8 +181,26 @@ class fieldtype_text_pattern
         }
         
       }
+      else 
+      {
+      	$html = $pattern;
+      }
     }
     
+    //num2str
+    $html = $app_num2str->prepare($html);
+    
     return $html;
+  }
+  
+  function output_singe_text($text,$entities_id,$item)
+  {
+  	$output_options = array('item' => $item);
+  	$output_options['field']['configuration'] = '';
+  	$output_options['field']['entities_id'] = $entities_id;
+  	$output_options['path'] = $entities_id . '-' . $item['id'];
+  	$output_options['custom_pattern'] = $text;
+  	
+  	return $this->output($output_options);
   }
 }

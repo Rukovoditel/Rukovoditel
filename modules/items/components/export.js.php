@@ -114,9 +114,22 @@
 
 		$('#filename').val(name)
 	}
+
 	
 	$(function(){
 
+		$('#btn_export_print').click(function(){
+			$('#export_form').attr('target','_blank');
+			$('#action').val('print')
+			$('#export_form').submit();
+		})
+		
+		$('#btn_export').click(function(){
+			$('#export_form').attr('target','_self');
+			$('#action').val('export')
+			$('#export_form').submit();
+		})
+		
 		//load templates
 		load_items_export_templates()
 		load_items_export_templates_button();

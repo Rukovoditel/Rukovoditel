@@ -1,5 +1,10 @@
 <?php
 
+if(!users::has_access('export'))
+{
+	redirect_to('dashboard/access_forbidden');
+}
+
 $entity_cfg = entities::get_cfg($current_entity_id);
 
 switch($app_module_action)
@@ -64,20 +69,28 @@ switch($app_module_action)
                               'field'=>$field,
                               'item'=>$item,
                               'is_export'=>true,                              
+          										'is_print'=>true,
                               'path'=>$current_path,
           										'path_info' => $path_info_in_report,
           );
-                              
-          if(in_array($field['type'],array('fieldtype_textarea_wysiwyg','fieldtype_barcode','fieldtype_qrcode')))
+          
+          if($field['type']=='fieldtype_dropdown_multilevel')
           {
-            $output = trim(fields_types::output($output_options));
+          	$export_data = array_merge($export_data, fieldtype_dropdown_multilevel::output_info_box($output_options,true));          	
           }
-          else
-          {
-            $output = trim(strip_tags(fields_types::output($output_options)));
-          }   
-           
-          $export_data[] = array(fields_types::get_option($field['type'],'name',$field['name']),$output);
+          else 
+          {          
+	          if(in_array($field['type'],array('fieldtype_textarea_wysiwyg','fieldtype_textarea','fieldtype_barcode','fieldtype_qrcode','fieldtype_todo_list')))
+	          {
+	            $output = trim(fields_types::output($output_options));
+	          }
+	          else
+	          {
+	            $output = trim(strip_tags(fields_types::output($output_options)));
+	          }   
+	           
+	          $export_data[] = array(fields_types::get_option($field['type'],'name',$field['name']),$output);
+          }
         }  
         
         if(count($export_data)>0)
@@ -113,7 +126,9 @@ switch($app_module_action)
                 
             $output_options = array('class'=>$field['type'],
                                     'value'=>$field['fields_value'],
-                                    'field'=>$field, 
+                                    'field'=>$field,
+            												'is_export'=>true,
+            												'is_print'=>true,
                                     'path'=>$current_path,                           
                                     'choices_cache'=>$app_choices_cache);
                   
@@ -127,7 +142,7 @@ switch($app_module_action)
             $html_fields = '<table>' . $html_fields . '</table>';
           }
           
-          $attachments = fields_types::output(array('class'=>'fieldtype_attachments','value'=>$item['attachments'],'path'=>$current_path,'field'=>array('entities_id'=>$current_entity_id),'item'=>array('id'=>$current_item_id)));
+          $attachments = fields_types::output(array('class'=>'fieldtype_attachments','is_export'=>true,'value'=>$item['attachments'],'path'=>$current_path,'field'=>array('entities_id'=>$current_entity_id),'item'=>array('id'=>$current_item_id)));
           $attachments = '<div>' . strip_tags($attachments) . '</div>';
           $html_fields = '<div class="comments_fields">' . $html_fields. '</div>';
           
@@ -167,7 +182,7 @@ switch($app_module_action)
             
             <style>               
               body { 
-                font-family:   DejaVu Sans, sans-serif; 
+                font-family: DejaVu Sans, sans-serif; 
                }
                
               body, table, td {
@@ -177,9 +192,9 @@ switch($app_module_action)
               .comments_fields th{ 
                 text-align: left; font-weight: normal; 
               }
-              
+      		              
               c{
-                font-family:STXiheiChinese;
+                font-family: STXihei;
                 font-style: normal;
                 font-weight: 400;
               }
@@ -250,8 +265,10 @@ switch($app_module_action)
 	      
 	      $filename = str_replace(' ','_',trim($_POST['filename']));
 	                              
-	      require_once("includes/libs/dompdf-0.7.0/autoload.inc.php");    
-	                                    
+	      require_once("includes/libs/dompdf-0.8.2/autoload.inc.php");    
+	                              
+	      //echo $html;
+	      //exit();
 	      
 	      $dompdf = new Dompdf\Dompdf();      
 	      $dompdf->load_html($html);

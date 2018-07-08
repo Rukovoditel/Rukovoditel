@@ -23,9 +23,11 @@ switch($app_module_action)
     	exit();
     	break;
   case 'save':
+  	  	
     $sql_data = array('name' => db_prepare_input($_POST['name']),
     									'icon' => db_prepare_input($_POST['icon']),
     									'entities_list' => (isset($_POST['entities_list']) ? implode(',',$_POST['entities_list']) : ''),
+    									'reports_list' => (isset($_POST['reports_list']) ? implode(',',$_POST['reports_list']) : ''),
                       'sort_order'=>db_prepare_input($_POST['sort_order']),                                              
                       );
     

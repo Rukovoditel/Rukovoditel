@@ -69,11 +69,22 @@ class users_filters
     }    
   }
   
-  function use_filters($filters_id)
+  function set_current_users_filter($filters_id)
   {
+  	global $app_current_users_filter;
+  	
+  	$users_filters = db_find('app_users_filters',$filters_id);
+  	
+  	$app_current_users_filter[$this->reports_id] = $users_filters['name'];
+  }
+  
+  function use_filters($filters_id)
+  {  	  	
     if($filters_id=='default')
     {
       $this->use_default_filters();
+      
+      $this->set_current_users_filter(0);
     }
     else
     {
@@ -83,6 +94,8 @@ class users_filters
       {
         $this->use_reports_filters($filters_id,$parent_reports_id);
       }
+      
+      $this->set_current_users_filter($filters_id);
     }
   }
   

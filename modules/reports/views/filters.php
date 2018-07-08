@@ -75,7 +75,9 @@ if($current_reports_info['id']!=$reports_id)
   </div>
 </div>  
   
-<?php } ?>  
+<?php } ?>
+
+<?php echo '<a class="btn btn-default" href="' . url_for('reports/reports') . '">' . TEXT_BUTTON_BACK. '</a>'; ?>  
   
 
 

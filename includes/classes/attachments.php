@@ -2,8 +2,55 @@
 
 class attachments
 {
-  public static function render_preview($field_id, $attachments_list)
+	public static function delete_in_queue($field_id, $filename)
+	{
+		global $uploadify_attachments, $uploadify_attachments_queue;
+					
+		$key = array_search($filename,$uploadify_attachments[$field_id]);
+		$queue_key = array_search($filename,$uploadify_attachments_queue[$field_id]);
+		
+		//echo $filename . ' - ' . $field_id;
+		//print_r($uploadify_attachments);
+		
+		if( $key!==false or $queue_key!==false)
+		{
+			$file = attachments::parse_filename($filename);
+			
+			//delete file
+      if(is_file(DIR_WS_ATTACHMENTS . $file['folder'] .'/'. $file['file_sha1']))
+      {
+        unlink(DIR_WS_ATTACHMENTS . $file['folder']  .'/' . $file['file_sha1']);
+      }
+      
+      //delete from sessions
+      if($key!==false)
+      {
+      	unset($uploadify_attachments[$field_id][$key]);
+      }
+      
+      if($queue_key!==false)
+      {
+      	unset($uploadify_attachments_queue[$field_id][$queue_key]);
+      }
+      
+      //delete from queue 
+      db_query("delete from app_attachments where filename='" . db_input($filename) . "'");
+      
+      //delete files from file storage
+      if(class_exists('file_storage'))
+      {
+      	$file_storage = new file_storage();
+      	$file_storage->delete_files($field_id, array($filename));      	       	
+      }
+      
+		}
+		
+	}
+	
+  public static function render_preview($field_id, $attachments_list, $delete_file_url)
   {    
+  	global $app_session_token;
+  	
     $html = '';
     
     if(count($attachments_list)>0)
@@ -12,14 +59,16 @@ class attachments
       <div class="table-scrollable attachments-form-list">
       <table class="table table-striped table-hover">
         <tbody>'; 
-      foreach($attachments_list as $v)
+      foreach($attachments_list as $k=>$v)
       {
         $file = attachments::parse_filename($v);
         
+        $row_id = 'attachments_row_' . $field_id. '_' . $k;
+        
         $html .= '
-          <tr>
-            <td>' . $file['name']. '</td>
-            <td><label class="checkbox">' . input_checkbox_tag('delete_attachments[' . $file['file'] . ']',1) . ' ' . TEXT_DELETE . '</label></td>
+          <tr class="' . $row_id . '">
+            <td width="100%">' . $file['name']. '</td>
+            <td align="right"><label class="checkbox delete_attachments">' . input_checkbox_tag('delete_attachments[' . $file['file'] . ']',1,array('data-filename'=>$file['file'],'class'=>'delete_attachments_checkbox','data-row-id'=>$row_id)) . ' ' . TEXT_DELETE . '</label></td>
           </tr>
         ';
       }
@@ -27,19 +76,34 @@ class attachments
       $html .= '
         </tbody>
       </table>
-      </div>';
+      </div>
+      <script>
+      		appHandleAttachmentsDelete(\'' . $field_id . '\',\'' . $delete_file_url . '\',\'' . $app_session_token . '\');
+      		appHandleUniformCheckbox();
+      </script>
+      ';
+      
+      $html .= input_hidden_tag('fields[' . $field_id . ']',implode(',',$attachments_list));
             
     }
-    
-    $html .= input_hidden_tag('fields[' . $field_id . ']',implode(',',$attachments_list));
-    
+    else
+    {
+    	$field = db_find('app_fields',$field_id);
+    	
+    	if($field['is_required'])
+    	{
+    		$html .= input_hidden_tag('fields[' . $field_id . ']','',array('class'=>'form-control field_' . $field['id'] . ' required'));
+    	}
+    }
+           
     return $html;  
   
   }
   
   public static function delete_attachments($entities_id, $items_id)
   {
-    $fields_query = db_query("select * from app_fields where entities_id='" . db_input($entities_id) . "' and type in ('fieldtype_attachments','fieldtype_input_file')");
+  	  	  	
+    $fields_query = db_query("select * from app_fields where entities_id='" . db_input($entities_id) . "' and type in ('fieldtype_attachments','fieldtype_input_file','fieldtype_image')");
     while($fields = db_fetch_array($fields_query))
     {
       $items_query = db_query("select * from app_entity_" . $entities_id . " where id='" . db_input($items_id) . "'");
@@ -55,6 +119,14 @@ class attachments
               unlink(DIR_WS_ATTACHMENTS . $file['folder']  .'/' . $file['file_sha1']);                            
             }
           }
+          
+          //delete files from file storage
+          if(class_exists('file_storage'))
+          {  
+          	$file_storage = new file_storage();
+          	$file_storage->delete_files($fields['id'], explode(',',$files));
+          }
+          
         }
       }
     }        
@@ -164,17 +236,21 @@ class attachments
       $size = 0;
     }
         
-    return array('name' => $name,
-                 'file' =>$filename,
-                 'file_sha1' =>sha1($filename),
-                 'file_path' =>$file_path,
-                 'folder' => DIR_WS_ATTACHMENTS . $folder . '/',
-                 'is_image'=> is_image($file_path),
-                 'is_pdf'=> is_pdf($filename),
-                 'is_exel'=>is_excel($filename),                  
-                 'icon'=>$icon,
-                 'size'=> $size,
-                 'folder' => $folder);
+    return array(
+    		'name' => $name,
+        'file' =>$filename,
+        'file_sha1' =>sha1($filename),
+        'file_path' =>$file_path,
+        'folder' => DIR_WS_ATTACHMENTS . $folder . '/',
+        'is_image'=> is_image($file_path),
+        'is_pdf'=> is_pdf($filename),
+        'is_exel'=>is_excel($filename),                  
+        'icon'=>$icon,
+        'size'=> $size,
+        'folder' => $folder,
+    		'date_added' => substr($filename,0,strpos($filename,'_')),
+    		
+    );
   }
   
   public static function file_size_convert($bytes)

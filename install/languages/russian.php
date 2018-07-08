@@ -9,6 +9,8 @@ define('TEXT_BUTTON_CHECK_ENVIRONMENT','Проверить сервер');
 define('TEXT_CHECK_ERROS_ABOVE','Установка невозможна. Пожалуйста проверьте ошибки выше.');
 define('TEXT_ERROR_PHP_VERSION','Ошибка: требуется PHP>= 5.4, Текущая версия %s');
 define('TEXT_ERROR_GD_LIB','Библиотека PHP GD не установлена ​​на вашем веб-сервере');
+define('TEXT_ERROR_MBSTRING_LIB','Библиотека PHP mbstring не установлена ​​на вашем веб-сервере');
+define('TEXT_ERROR_XMLWRITER_LIB','Библиотека PHP XMLWriter не установлена ​​на вашем веб-сервере');
 define('TEXT_ERRRO_FOLDER_NOT_WRITABLE','Ошибка: папка "%s" недоступна для записи!');
 define('TEXT_ERRRO_FOLDER_NOT_EXIST','Ошибка: папка "%s" не существует');
 

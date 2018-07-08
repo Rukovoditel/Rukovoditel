@@ -20,6 +20,9 @@
   switch($app_module_action)
   {
     case 'login':
+    	 //chck form token
+    	 app_check_form_token('users/ldap_login');
+    	
        if(!$ldap_default_group_id = access_groups::get_ldap_default_group_id())
        {
          redirect_to('users/ldap_login'); 
@@ -34,8 +37,8 @@
        	}
        }
                                
-       $username = $_POST['username'];
-       $password = $_POST['password'];
+       $username = db_prepare_input($_POST['username']);
+       $password = db_prepare_input($_POST['password']);
        
        $ldap = new ldap_login();
        
@@ -54,20 +57,22 @@
           {
             $first_name = $user_attr['name']; 
           }
-          
+                    
+          $first_name = (strlen($user_attr['firstname']) ? $user_attr['firstname'] : $first_name);          
+          $last_name = (strlen($user_attr['lastname']) ? $user_attr['lastname'] : '');                    
+          $group = $user_attr['group'];
 
-          $check_query = db_query("select count(*) as total from app_entity_1 where field_12='" . db_input($username) . "' ");
-          $check = db_fetch_array($check_query);
-          
-          if($check['total']==0)
+          $check_query = db_query("select id from app_entity_1 where field_12='" . db_input($username) . "' ");
+          if(!$check = db_fetch_array($check_query))                   
           {
             $hasher = new PasswordHash(11, false);
-                     
+                                 
             $sql_data = array('password'    =>  $hasher->HashPassword($password),
                               'field_12'    =>  $username,
                               'field_5'     =>  1,
-                              'field_6'     =>  $ldap_default_group_id,
+                              'field_6'     =>  ($group>0 ? $group : $ldap_default_group_id),
                               'field_7'     =>  $first_name,
+            									'field_8'     =>  $last_name,
                               'field_9'     =>  $user_email,
                               'date_added'  =>  time());
             
@@ -80,7 +85,7 @@
               $options = array('to' => $user_email,
                                'to_name' => $first_name,
                                'subject'=>(strlen(CFG_REGISTRATION_EMAIL_SUBJECT)>0 ? CFG_REGISTRATION_EMAIL_SUBJECT :TEXT_NEW_USER_DEFAULT_EMAIL_SUBJECT),
-                               'body'=>CFG_REGISTRATION_EMAIL_BODY . '<p><b>' . TEXT_LOGIN_DETAILS . '</b></p><p>' . TEXT_USERNAME .': ' . $username . '<br>' . TEXT_PASSWORD . ': ' . $password . '</p><p><a href="' . url_for('users/login','',true) . '">' . url_for('users/login','',true). '</a></p>',
+                               'body'=>CFG_REGISTRATION_EMAIL_BODY . '<p><b>' . TEXT_LOGIN_DETAILS . '</b></p><p>' . TEXT_USERNAME .': ' . $username . '<br></p><p><a href="' . url_for('users/login','',true) . '">' . url_for('users/login','',true). '</a></p>',
                                'from'=> 'noreply@' . $_SERVER['HTTP_HOST'],
                                'from_name'=>'noreply' );
                                
@@ -92,8 +97,18 @@
             redirect_to('users/account');        
           }
           else
-          {
-            users::login($_POST['username'],$_POST['password'],0);
+          {                        
+          	app_session_register('app_logged_users_id',$check['id']);
+          	 
+          	if(isset($_COOKIE['app_login_redirect_to']))
+            {
+              setcookie('app_login_redirect_to','',time() - 3600,'/');
+              redirect_to(str_replace('module=','',$_COOKIE['app_login_redirect_to']));
+            }
+            else          	
+          	{
+          		redirect_to('dashboard/');
+          	}
           }
           
                                                         

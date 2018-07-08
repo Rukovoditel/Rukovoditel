@@ -13,6 +13,10 @@ class fieldtype_radioboxes
   {
     $cfg = array();
     
+    $cfg[] = array('title'=>TEXT_HIDE_FIELD_IF_EMPTY, 'name'=>'hide_field_if_empty','type'=>'checkbox','tooltip_icon'=>TEXT_HIDE_FIELD_IF_EMPTY_TIP);
+    
+    $cfg[] = array('title'=>TEXT_DISPLAY_CHOICES_VALUES, 'name'=>'display_choices_values','type'=>'checkbox','tooltip_icon'=>TEXT_DISPLAY_CHOICES_VALUES_TIP);
+    
 //cfg global list if exist
     if(count($choices = global_lists::get_lists_choices())>0)
     {              
@@ -41,7 +45,7 @@ class fieldtype_radioboxes
     }
     else
     {                         
-      $choices = fields_choices::get_choices($field['id'],false);
+      $choices = fields_choices::get_choices($field['id'],false,'',$cfg->get('display_choices_values'));
       $default_id = fields_choices::get_default_id($field['id']);
     }
     

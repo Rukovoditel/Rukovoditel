@@ -9,6 +9,21 @@
 <div class="alert alert-info"><?php echo TEXT_IMPORT_DATA_TOOLTIP ?></div>
   
   <div class="form-body">
+
+<?php 
+	$choices = array(
+			'import' => TEXT_ACTION_IMPORT_DATA,
+			'update' => TEXT_ACTION_UPDATE_DATA,
+			'update_import' => TEXT_ACTION_UPDATE_AND_IMPORT_DATA,
+	);
+	
+?>  
+  <div class="form-group">
+  	<label class="col-md-3 control-label" for="entities_id"><?php echo TEXT_ACTION ?></label>
+    <div class="col-md-9">	
+  	  <?php echo select_tag('import_action',$choices,'',array('class'=>'form-control input-large required')) ?>
+    </div>			
+  </div>
     
   <div class="form-group">
   	<label class="col-md-3 control-label" for="entities_id"><?php echo TEXT_SELECT_ENTITY ?></label>
@@ -47,6 +62,7 @@
     }); 
     
     $('#entities_id').change(function(){
+    	$('#parent_item_id_container').html('<div class="ajax-loading"></div>');
       $('#parent_item_id_container').load('<?php echo url_for("tools/import_data","action=set_parent_item_id")?>',{entity_id:$(this).val()},function(response, status, xhr) {
           if (status == "error") {                                 
              $(this).html('<div class="alert alert-error"><b>Error:</b> ' + xhr.status + ' ' + xhr.statusText+'<div>'+response +'</div></div>')                    

@@ -19,7 +19,7 @@
   <li id="forms_tabs_<?php echo $tabs['id'] ?>" > <div>
   <div class="cfg_form_tab">
     
-      <?php if($count_tabs>1): ?>
+      <?php if($count_tabs>0): ?>
       <div class="cfg_form_tab_heading">
         <table width="100%">
           <tr>
@@ -56,7 +56,7 @@ $fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_
 while($v = db_fetch_array($fields_query))
 {
   echo '
-    <li id="form_fields_' . $v['id'] . '">
+    <li id="form_fields_' . $v['id'] . '" class="' . $v['type'] . '">
       <div>
         <table width="100%">
           <tr>

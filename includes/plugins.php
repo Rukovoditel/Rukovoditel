@@ -27,4 +27,15 @@
         require('plugins/' . $plugin .'/application_top.php');        
       }      
     }
-  } 
+  }
+  elseif(defined('AVAILABLE_PLUGINS') and !isset($app_user))
+  {
+  	foreach(explode(',',AVAILABLE_PLUGINS) as $plugin)
+  	{
+  		if(is_file('plugins/' . $plugin .'/application_core.php'))
+  		{
+  			require('plugins/' . $plugin .'/application_core.php');
+  		}
+  	}
+  }	
+  	

@@ -377,13 +377,22 @@ var App = function () {
                     sidebar.css('width', '');
                 }
                 $.cookie('sidebar_closed', '0');
-            } else {
+                
+                set_user_cfg('sidebar-status','');
+            } 
+            else 
+            {
                 body.addClass("page-sidebar-closed");
                 $.cookie('sidebar_closed', '1');
+                
+                set_user_cfg('sidebar-status','page-sidebar-closed')
             }
             handleSidebarAndContentHeight(); //fix content & sidebar height
             runResponsiveHandlers();
-        });
+            
+            jQuery(window).resize();
+                        
+        });        
     }
 
     var handleQuickSearch = function() {
@@ -866,7 +875,7 @@ var App = function () {
             handleTooltips(); // handle bootstrap tooltips
             handlePopovers(); // handles bootstrap popovers
             handleAccordions(); //handles accordions 
-            handleModals(); // handle modals
+            handleModals(); // handle modals            
         },
 
         //main function to initiate core javascript after ajax complete

@@ -1,7 +1,7 @@
 <h3 class="page-title"><?php echo TEXT_USERS_NOTIFICATIONS ?></h3>
 
 
-<?php echo button_tag(TEXT_DELETE_SELECTED, url_for("users/notifications",'action=delete_selected'),false,array('class'=>'btn btn-primary')) ?>
+<?php echo button_tag(TEXT_MARK_AS_READ, url_for("users/notifications",'action=delete_selected'),false,array('class'=>'btn btn-primary')) ?>
 
 <div class="row">
   <div class="col-md-12">

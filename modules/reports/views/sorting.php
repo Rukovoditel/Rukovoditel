@@ -1,6 +1,7 @@
 <?php echo ajax_modal_template_header(TEXT_HEADING_REPORTS_SORTING) ?>
 
 <?php
+
   if($app_redirect_to=='listng_filters')
   {
     echo form_tag('sorting_form', url_for('entities/listing_filters','entities_id=' . $reports_info['entities_id']));
@@ -11,9 +12,31 @@
   	$fields_info = db_find('app_fields',$fields_id);
   	echo form_tag('sorting_form', url_for('entities/entityfield_filters','entities_id=' . $fields_info['entities_id'] . '&fields_id=' . $fields_id));
   }
+  elseif($app_redirect_to == 'related_records_field_settings')
+  {
+  	echo form_tag('sorting_form', url_for('entities/fields_settings','entities_id=' . $_GET['entities_id'] . '&fields_id=' . $_GET['fields_id']));
+  }
+  elseif($app_redirect_to == 'parent_infopage_filters')
+  {
+  	echo form_tag('sorting_form', url_for('entities/parent_infopage_filters','entities_id=' . $reports_info['entities_id']));
+  }
+  elseif($app_redirect_to == 'infopage_entityfield_filters')
+  {
+  	echo form_tag('sorting_form', url_for('entities/infopage_entityfield_filters','entities_id=' . $reports_info['entities_id'] . '&related_entities_id=' . $_GET['related_entities_id'] . '&fields_id=' . $_GET['fields_id']));
+  }
   elseif($app_redirect_to=='common_reports')
   {
     echo form_tag('sorting_form', url_for('ext/common_reports/reports'));
+  }
+  elseif(strstr($app_redirect_to,'funnelchart'))
+  {
+  	$id = str_replace('funnelchart','',$app_redirect_to);
+  	echo form_tag('sorting_form', url_for('ext/funnelchart/view','id=' . $id . (strlen($app_path) ? '&path=' . $app_path:'')));
+  }
+  elseif(strstr($app_redirect_to,'kanban'))
+  {
+  	$id = str_replace('kanban','',$app_redirect_to);
+  	echo form_tag('sorting_form', url_for('ext/kanban/view','id=' . $id . (strlen($app_path) ? '&path=' . $app_path:'')));
   }
   elseif(isset($_GET['path']))
   {
@@ -101,7 +124,7 @@ if(!$has_sort_by_lastcommentdate and $entities_cfg->get('use_comments')==1)
   echo '<li id="form_fields_lastcommentdate_asc"><div><img rel="asc" src="images/arrow_down.png" class="condition_icon" id="condition_icon_lastcommentdate" > ' . TEXT_LAST_COMMENT_DATE . '</div></li>';
 }
 
-$fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where " . (count($sorting_fields)>0 ? "f.id not in (" . implode(',',$sorting_fields). ") and " : "") . " f.type not in ('fieldtype_action')  and  f.entities_id='" . db_input($reports_info['entities_id']) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
+$fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where " . (count($sorting_fields)>0 ? "f.id not in (" . implode(',',$sorting_fields). ") and " : "") . " f.type not in (" . fields_types::get_type_list_excluded_in_sorting() . ")  and  f.entities_id='" . db_input($reports_info['entities_id']) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
 while($v = db_fetch_array($fields_query))
 {
 

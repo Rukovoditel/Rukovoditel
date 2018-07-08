@@ -119,10 +119,25 @@ switch($app_module_action)
    
           $hot_reports = new hot_reports();
           echo $hot_reports->render_dropdown($_GET['reports_id']); 
+          
+          db_dev_log();
+          
       exit();
     break;
   case 'update_user_notifications_report':
   		echo users_notifications::render_dropdown();
   		exit();
   	break;
+  case 'set_users_alers_viewed':
+  		
+  		$sql_data = array(
+  			'users_id' => $app_user['id'],
+  			'alerts_id' => _post::int('id'),
+  		);
+  		
+  		db_perform('app_users_alerts_viewed', $sql_data);
+  		
+  		exit();
+  	break;
+  	
 } 

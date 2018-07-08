@@ -23,6 +23,8 @@ switch($app_module_action)
   
       if(isset($_POST['checked']))
       {
+      	if(!isset($_POST['force_display_id'])) $_POST['force_display_id'] = '';
+      	
       	$listing_sql_query_select = '';
         $listing_sql_query = '';
         $listing_sql_query_join = '';
@@ -40,7 +42,7 @@ switch($app_module_action)
           require(component_path('items/add_search_query'));
         }
         
-        if(strlen($_POST['search_keywords'])>0 and $_POST['search_in_all']=='true')
+        if((strlen($_POST['search_keywords'])>0 and $_POST['search_in_all']=='true') or strlen($_POST['force_display_id']))
 				{
 					//skip filters if there is search keyworkds and option search_in_all in 
 				}
@@ -59,8 +61,29 @@ switch($app_module_action)
         {
           $listing_sql_query .= " and e.parent_item_id='" . db_input($parent_entity_item_id) . "'";
         }
-                
-        $listing_sql_query = items::add_access_query($current_entity_id,$listing_sql_query);
+        
+        //exclude admin users from listing for not admin users
+        if($current_entity_id==1 and $app_user['group_id']>0)
+        {
+        	$listing_sql_query .= " and e.field_6>0";
+        }
+        
+        //force display items by ID
+        if(strlen($_POST['force_display_id']))
+        {
+        	$listing_sql_query .= " and e.id in (" . $_POST['force_display_id'] . ")";
+        }
+        
+        //force extra filter
+        if(strlen($_POST['force_filter_by']))
+        {
+        	$listing_sql_query .= reports::force_filter_by($_POST['force_filter_by']);
+        }
+             
+        //check access to action with assigned only
+        $force_access_query = users::has_users_access_name_to_entity('action_with_assigned',$current_entity_id);
+        
+        $listing_sql_query = items::add_access_query($current_entity_id,$listing_sql_query,$force_access_query);
         
         //add having query
         $listing_sql_query .= $listing_sql_query_having;

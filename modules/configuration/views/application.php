@@ -91,6 +91,13 @@
 	    </div>			
 	  </div>  
 	  
+		<div class="form-group">
+	  	<label class="col-md-3 control-label" for="CFG_APP_TIMEZONE"><?php echo ' <a href="https://en.wikipedia.org/wiki/Coordinated_Universal_Time" target="_blank">UTC</a>' ?></label>
+	    <div class="col-md-9">	
+	  	  <p class="form-control-static"><?php echo date('P'); ?></p>
+	    </div>			
+	  </div>  
+	  
 	  <div class="form-group">
 	  	<label class="col-md-3 control-label" for="CFG_APP_ROWS_PER_PAGE"><?php echo TEXT_ROWS_PER_PAGE ?></label>
 	    <div class="col-md-9">	
@@ -123,7 +130,16 @@
 	
 	<?php
 	  $days_array = explode(',',str_replace('"','',TEXT_DATEPICKER_DAYS));  
-	  $days_list = array('0'=>$days_array[0],'1'=>$days_array[1]);
+	  $days_list = array(
+	  		'0'=>$days_array[0],
+	  		'1'=>$days_array[1],
+	  		'2'=>$days_array[2],
+	  		'3'=>$days_array[3],
+	  		'4'=>$days_array[4],
+	  		'5'=>$days_array[5],
+	  		'6'=>$days_array[6],
+	  		
+	  );
 	?>  
 	  
 	  <div class="form-group">
@@ -133,6 +149,13 @@
 	      <?php echo '<span class="help-block">' . TEXT_FIRST_DAY_OF_WEEK_INFO . '</span>';?>
 	    </div>			
 	  </div>  
+	  
+	  <div class="form-group">
+	  	<label class="col-md-3 control-label" for="CFG_DISABLE_CHECK_FOR_UPDATES"><?php echo TEXT_DISABLE_CHECK_FOR_UPDATES ?></label>
+	    <div class="col-md-9">	
+	  	  <?php echo select_tag('CFG[DISABLE_CHECK_FOR_UPDATES]',$default_selector,CFG_DISABLE_CHECK_FOR_UPDATES,array('class'=>'form-control input-small')); ?>
+	    </div>			
+	  </div> 
           
 	</div>
   <div class="tab-pane fade" id="users_configuration">

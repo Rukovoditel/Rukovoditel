@@ -34,8 +34,7 @@ switch($app_module_action)
   case 'save_tab':
       $sql_data = array('name'=>$_POST['name'],
                         'entities_id'=>$_POST['entities_id'],
-                        'description'=>$_POST['description'],
-                        'sort_order'=>(forms_tabs::get_last_sort_number($_POST['entities_id'])+1)
+                        'description'=>$_POST['description'],                        
                         );
       
       if(isset($_GET['id']))
@@ -43,7 +42,8 @@ switch($app_module_action)
         db_perform('app_forms_tabs',$sql_data,'update',"id='" . db_input($_GET['id']) . "'");       
       }
       else
-      {              
+      {   
+      	$sql_data['sort_order'] = (forms_tabs::get_last_sort_number($_POST['entities_id'])+1);
         db_perform('app_forms_tabs',$sql_data);
       }
       

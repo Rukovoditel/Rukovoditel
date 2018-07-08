@@ -105,7 +105,10 @@ switch($app_module_action)
 }
 
 if(strlen($app_module_action)>0)
-{
+{	
+	//reset current users filter name if do any actions
+	$app_current_users_filter[$current_reports_info['id']] = '';
+	
 	plugins::handle_action('filters_redirect');
 	
 	switch($app_redirect_to)

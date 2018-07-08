@@ -2,6 +2,78 @@
 
 class fields
 {
+	//get heading fields chace for all entities 
+	public static function get_heading_fields_cache()
+	{
+		$cache = array();
+		$fields_query = db_query("select * from app_fields where is_heading=1");
+		while($fields = db_fetch_array($fields_query))
+		{
+			$cache[$fields['id']] = $fields;
+		}
+				
+		return $cache;
+	}
+	
+	public static function get_heading_fields_id_cache_by_entity()
+	{
+		$cache = array();
+		$fields_query = db_query("select * from app_fields where is_heading=1");
+		while($fields = db_fetch_array($fields_query))
+		{
+			$cache[$fields['entities_id']] = $fields['id'];
+		}
+					
+		return $cache;
+	}
+	
+	static function not_formula_fields_cache()
+	{
+		$cache = array();
+		$fields_query = db_query("select * from app_fields where type not in ('fieldtype_formula')");
+		while($fields = db_fetch_array($fields_query))
+		{
+			$cache[$fields['entities_id']][] = $fields['id'];
+		}
+	
+		return $cache;
+	}
+	
+	static function formula_fields_cache()
+	{
+		$cache = array();
+		$fields_query = db_query("select * from app_fields where type in ('fieldtype_formula')");
+		while($fields = db_fetch_array($fields_query))
+		{
+			$cache[$fields['entities_id']][] = array(
+					'id' => $fields['id'],
+					'name' => $fields['name'],
+					'configuration' => $fields['configuration'],
+			);
+		}
+	
+		return $cache;
+	}	
+	
+	static function get_cache()
+	{
+		$cache = array();
+		$fields_query = db_query("select * from app_fields");
+		while($fields = db_fetch_array($fields_query))
+		{
+			$fields_id = (in_array($fields['type'], array('fieldtype_id','fieldtype_date_added','fieldtype_created_by','fieldtype_parent_item_id')) ? $fields['type'] : $fields['id']);
+			$cache[$fields['entities_id']][$fields_id] = array(
+					'id' => $fields['id'],
+					'type' => $fields['type'],
+					'name' => $fields['name'],
+					'entities_id' => $fields['entities_id'],
+					'configuration' => $fields['configuration'],
+			);
+		}
+	
+		return $cache;
+	}
+	
 	public static function get_choices($entities_id)
 	{
 		$choices = array();
@@ -81,17 +153,16 @@ class fields
   
   public static function get_heading_id($entity_id)
   {
-    $info_query = db_query("select * from app_fields where entities_id='" . db_input($entity_id) . "' and is_heading=1");
-    if($v = db_fetch_array($info_query))
+  	global $app_heading_fields_id_cache;
+  	    
+    if(isset($app_heading_fields_id_cache[$entity_id]))
     {
-      return $v['id'];
+      return $app_heading_fields_id_cache[$entity_id];
     }
     else
     {
       return false;
-    }
-    
-    
+    }       
   }
   
   public static function get_last_sort_number($forms_tabls_id)
@@ -112,6 +183,7 @@ class fields
       {
         switch($v['type'])
         {          
+        	case 'fieldtype_dropdown_multiple':
           case 'fieldtype_checkboxes':
               $name = 'fields[' . $v['id'] . '][]';
             break;
@@ -147,8 +219,10 @@ class fields
     
   public static function get_search_feidls($entity_id)
   {
-    global $fields_access_schema;
+    global $app_user;
     
+    $fields_access_schema = users::get_fields_access_schema($entity_id,$app_user['group_id']);
+        
     $search_fields = array();
         
     $fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where f.entities_id='" . db_input($entity_id) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
@@ -166,11 +240,11 @@ class fields
         $search_fields[] = array('id'=>$v['id'],'name'=>fields_types::get_option($v['type'],'name',$v['name']),'is_heading'=>$v['is_heading']); 
       }
     } 
-    
+            
     return $search_fields; 
   }
   
-  public static function get_filters_choices($entity_id, $show_parent_item_fitler = true)
+  public static function get_filters_choices($entity_id, $show_parent_item_fitler = true,$exclude = "")
   {
     global $app_user;
     
@@ -194,7 +268,7 @@ class fields
                 
     $choices = array();
     $choices[''] = '';    
-    $fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where f.type in (" . $types_for_filters_list . ")  and f.entities_id='" . db_input($entity_id) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
+    $fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where f.type in (" . $types_for_filters_list . ") " . (strlen($exclude) ? " and f.type not in ({$exclude})":'') . " and f.entities_id='" . db_input($entity_id) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
     while($v = db_fetch_array($fields_query))
     {
       //check field access
@@ -234,7 +308,7 @@ class fields
     
     if(strlen($fields_list)>0)
     {
-      $fields_query = db_query("select f.*, t.name as tab_name from app_fields f, app_forms_tabs t where  f.id in (" . $fields_list . ") and  f.entities_id='" . db_input($entities_id) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
+      $fields_query = db_query("select f.* from app_fields f, app_forms_tabs t where  f.id in (" . $fields_list . ") and  f.entities_id='" . db_input($entities_id) . "' and f.forms_tabs_id=t.id order by t.sort_order, t.name, f.sort_order, f.name");
       while($field = db_fetch_array($fields_query))
       {   
         //check field access
@@ -255,7 +329,7 @@ class fields
         $output_options = array('class'=>$field['type'],
                                 'value'=>$value,
                                 'field'=>$field,
-                                'item'=>$item,
+                                'item'=>$item,        												
                                 'is_listing'=>true,
                                 'is_export' => true,                                
                                 'redirect_to' => '',
@@ -268,5 +342,41 @@ class fields
     
     return $data;
   } 
+  
+  public static function get_field_choices_background_data($field_id)
+  {
+  	$data = array();
+  	
+  	$field_info_query = db_query("select * from app_fields where id='" . $field_id . "'");
+  	if($field_info = db_fetch_array($field_info_query))
+  	{
+  		$cfg = new fields_types_cfg($field_info['configuration']);
+  		if($cfg->get('use_global_list')>0)
+  		{
+  			$choices_query = db_query("select * from app_global_lists_choices where lists_id = '" . db_input($cfg->get('use_global_list')). "' and length(bg_color)>0");
+  		}
+  		else
+  		{
+  			$choices_query = db_query("select * from app_fields_choices where fields_id = '" . db_input($field_id). "' and length(bg_color)>0");
+  		}
+  		
+  		while($choices = db_fetch_array($choices_query))
+  		{
+  			$rgb = convert_html_color_to_RGB($choices['bg_color']);
+  			
+  			if(($rgb[0]+$rgb[1]+$rgb[2])<480)
+  			{
+  				$data[$choices['id']]  = ['background'=>$choices['bg_color'],'color'=>'#ffffff'];  				
+  			}
+  			else
+  			{
+  				$data[$choices['id']]  = ['background'=>$choices['bg_color']];
+  			}  			  			
+  		}
+  		
+  		return $data;
+  	}
+  	
+  }
         
 }

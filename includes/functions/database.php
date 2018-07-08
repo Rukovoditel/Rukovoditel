@@ -22,7 +22,11 @@
     }
     
     //reset sql mode     
-    db_query("SET sql_mode = ''");
+    if(DB_FORCE_SQL_MODE)
+    {	
+    	db_query("SET sql_mode = '" . DB_SET_SQL_MODE . "'");
+    }
+    
 
     return $$link;
   }
@@ -37,8 +41,8 @@
     $html = '
       <app_db_error>
       <div style="color: #b94a48; background: #f2dede; border: 1px solid #eed3d7; padding: 5px; margin: 5px; font-family: verdana; font-size: 12px; line-height: 1.5;">
-        <div><strong>Database Error:</strong> ' . $errno . ' - ' . $error . '</div>
-        <div><strong>Query:</strong> ' . $query . '</div>
+        <div><strong>Database Error:</strong> ' . $errno . ' - ' . htmlspecialchars($error) . '</div>
+        <div><strong>Query:</strong> ' . htmlspecialchars($query) . '</div>
         <div><strong>Page: </strong> ' . $_SERVER['REQUEST_URI'] . '</div>
       </div>
     '; 
@@ -75,8 +79,8 @@
   	if(count($data)==0) return false;
   	
   	$query = 'insert into ' . $table . ' (';
-  	
-  	while (list($columns, ) = each($data[0])) 
+  	  	
+  	foreach($data[0] as $columns=>$value)
   	{
   		$query .= $columns . ', ';
   	}
@@ -89,8 +93,8 @@
   	foreach($data as $d)
   	{
   		$query .= '(';
-  		
-	  	while (list(, $value) = each($d)) 
+  			  	
+	  	foreach($d as $columns=>$value)
 	  	{
 	  		switch ((string)$value) 
 	  		{
@@ -115,16 +119,25 @@
   	
   }
 
-  function db_perform($table, $data, $action = 'insert', $parameters = '') {
+  function db_perform($table, $data, $action = 'insert', $parameters = '') 
+  {
     reset($data);
-    if ($action == 'insert') {
+    
+    if ($action == 'insert') 
+    {
       $query = 'insert into ' . $table . ' (';
-      while (list($columns, ) = each($data)) {
+            
+      foreach($data as $columns=>$value)
+      {
         $query .= $columns . ', ';
       }
+      
       $query = substr($query, 0, -2) . ') values (';
+      
       reset($data);
-      while (list(, $value) = each($data)) {
+      
+      foreach($data as $columns=>$value)
+      {      
         switch ((string)$value) {
           case 'now()':
             $query .= 'now(), ';
@@ -138,9 +151,13 @@
         }
       }
       $query = substr($query, 0, -2) . ')';
-    } elseif ($action == 'update') {
+    } 
+    elseif ($action == 'update') 
+    {
       $query = 'update ' . $table . ' set ';
-      while (list($columns, $value) = each($data)) {
+       
+      foreach($data as $columns=>$value)
+      {
         switch ((string)$value) {
           case 'now()':
             $query .= $columns . ' = now(), ';
@@ -259,7 +276,9 @@
     elseif (is_array($string)) 
     {
       reset($string);
-      while (list($key, $value) = each($string)) {
+       
+      foreach($string as $key=>$value)
+      {
         $string[$key] = db_prepare_input($value);
       }
       return $string;
@@ -273,8 +292,56 @@
   function db_prepare_html_input($html)
   { 
   	$config = HTMLPurifier_Config::createDefault();
-  	$config->set('Attr.AllowedFrameTargets', array('_blank'));
+  	$config->set('Attr.AllowedFrameTargets', array('_blank'));  	
+  	$config->set('HTML.Trusted', true);  	  	
   	$purifier = new HTMLPurifier($config);
   	return $purifier->purify($html);  	 	
+  }
+  
+  function db_dev_log()
+  {
+  	global $app_db_query_log;
+  	
+  	if(DEV_MODE)
+  	{
+  		$db_log = '';
+  		$count = 1;
+  		foreach($app_db_query_log as $v)
+  		{
+  			$db_log .= $count . '. ' . $v . "\n";
+  			$count++;
+  		}
+  	
+  		$post_log = '';
+  		foreach($_POST as $k=>$v)
+  		{
+  			$post_log .= $k .'=' . $v . '; ';
+  		}
+  	
+  		$content = $_SERVER['REQUEST_URI'] . "\n"  . (strlen($post_log)>0 ? '$_POST' . "\t" . $post_log . "\n":''). $db_log;
+  		$errfile=fopen("log/db_log.txt","a");
+  		fputs($errfile, $content. "\n\n");
+  		fclose($errfile);
+  	
+  	}
+  }
+  
+  function db_check_privileges($required_privileges = array('Select','Insert','Update','Delete','Create','Drop','Alter'))
+  {
+  	//check user privileges
+  	$user_privileges_list = array();
+  	$user_privileges_query = db_query("SHOW PRIVILEGES");
+  	while($user_privileges = db_fetch_array($user_privileges_query))
+  	{
+  		$user_privileges_list[] = $user_privileges['Privilege'];
+  	}
+  	  	  	
+  	foreach($required_privileges as $v)
+  	{
+  		if(!in_array($v,$user_privileges_list))
+  		{
+  			die('Error: "' . $v . '" privilege for mysql user is required. Please update privileges for user "' . DB_SERVER_USERNAME . '"');
+  		}
+  	}  	  	  	
   }
 

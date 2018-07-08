@@ -11,7 +11,7 @@ while($reports = db_fetch_array($reports_query))
 {
   //get report entity info
   $entity_info = db_find('app_entities',$reports['entities_id']);
-  $entity_cfg = entities::get_cfg($reports['entities_id']);
+  $entity_cfg = new entities_cfg($reports['entities_id']);
   
   //check if parent reports was not set
   if($entity_info['parent_id']>0 and $reports['parent_id']==0)
@@ -23,7 +23,7 @@ while($reports = db_fetch_array($reports_query))
   $access_schema = users::get_entities_access_schema($reports['entities_id'],$app_user['group_id']);
   
   $add_button = ''; 
-  if(users::has_access('create',$access_schema))
+  if(users::has_access('create',$access_schema) and $entity_cfg->get('reports_hide_insert_button')!=1)
   { 
     if($entity_info['parent_id']==0)
     {
@@ -33,7 +33,7 @@ while($reports = db_fetch_array($reports_query))
     {
       $url = url_for('reports/prepare_add_item','reports_id=' . $reports['id']);
     }
-    $add_button = button_tag((strlen($entity_cfg['insert_button'])>0 ? $entity_cfg['insert_button'] : TEXT_ADD), $url) . ' ';
+    $add_button = button_tag((strlen($entity_cfg->get('insert_button'))>0 ? $entity_cfg->get('insert_button') : TEXT_ADD), $url) . ' ';
   } 
       
 
@@ -42,31 +42,50 @@ while($reports = db_fetch_array($reports_query))
   
   $gotopage = (isset($_GET['gotopage'][$reports['id']]) ? (int)$_GET['gotopage'][$reports['id']]:1);
   
+  
+  $with_selected_menu = '';
+  
+  if(users::has_access('export_selected',$access_schema) and users::has_access('export',$access_schema))
+  {
+  	$with_selected_menu .= '<li>' . link_to_modalbox('<i class="fa fa-file-excel-o"></i> ' . TEXT_EXPORT,url_for('items/export','path=' . $reports["entities_id"]  . '&reports_id=' . $reports['id'] ))  . '</li>';
+  }
+  
+  $with_selected_menu .= plugins::include_dashboard_with_selected_menu_items($reports['id']);
+  
+    
+  $report_title_html = '
+  		<div class="row">
+        <div class="col-md-12"><h3 class="page-title"><a href="' . url_for('reports/view','reports_id=' . $reports['id']) . '">' . $reports['name'] . '</a> </h3></div>
+      </div>
+  ';
+  
+  if(!strlen($add_button) and !strlen($with_selected_menu))
+  {
+  	$add_button = $report_title_html; 
+  	$report_title_html = (!$has_reports_on_dashboard ? '<br><br>':'');
+  }	
+    
   echo '
                             
     <div class="row dashboard-reports-container" id="dashboard-reports-container">
       <div class="col-md-12">
       
-      <div class="row">
-        <div class="col-md-12"><h3 class="page-title"><a href="' . url_for('reports/view','reports_id=' . $reports['id']) . '">' . $reports['name'] . '</a></h3></div>
-      </div>
+      ' . $report_title_html . '
       
       <div class="row">
         <div class="col-sm-6">   
              ' . $add_button . '      
+            ' . (strlen($with_selected_menu) ? ' 		
             <div class="btn-group">
       				<button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" data-hover="dropdown">
       				' . TEXT_WITH_SELECTED . '<i class="fa fa-angle-down"></i>
       				</button>
       				<ul class="dropdown-menu" role="menu">
-      					<li>
-      						' . link_to_modalbox(TEXT_EXPORT,url_for('items/export','path=' . $reports["entities_id"]  . '&reports_id=' . $reports['id'] ))  .'
-      					</li>
-                ' . plugins::include_dashboard_with_selected_menu_items($reports['id']) . '
+      					' . $with_selected_menu. '                
       				</ul>
-      			</div>
+      			</div>':'') .'
             
-            <button class="btn btn-default popovers" data-trigger="hover" data-placement="right" data-content="' . TEXT_EXT_COMMON_REPORTS_HELP . '"><i class="fa fa-question"></i></button> 
+            
                          
         </div>        
         <div class="col-sm-6">                        
@@ -76,6 +95,7 @@ while($reports = db_fetch_array($reports_query))
             
       <div id="' . $listing_container . '" class="entity_items_listing"></div>
       ' . input_hidden_tag($listing_container . '_order_fields',$reports['listing_order_fields']) . '
+      ' . input_hidden_tag($listing_container . '_has_with_selected',(strlen($with_selected_menu) ? 1:0)) . '
         
       </div>
     </div>
@@ -87,4 +107,6 @@ while($reports = db_fetch_array($reports_query))
       });    
     </script> 
   ';
+    
+  $has_reports_on_dashboard = true;
 }

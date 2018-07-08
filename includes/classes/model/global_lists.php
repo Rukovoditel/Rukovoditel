@@ -73,6 +73,25 @@ class global_lists
     return $tree;
   }
   
+  public static function get_js_level_tree($lists_id,$parent_id = 0,$tree = array(),$level=0)
+  {
+  	$choices_query = db_query("select * from app_global_lists_choices where lists_id = '" . db_input($lists_id). "' and parent_id='" . db_input($parent_id). "' order by sort_order, name");
+  	 
+  
+  	while($v = db_fetch_array($choices_query))
+  	{
+  		if($parent_id>0)
+  		{
+  			$tree[$parent_id][] = '
+  					$(update_field).append($("<option>", {value: ' . $v['id'] . ',text: "' . addslashes(strip_tags($v['name'])). '"}));';
+  		}
+  
+  		$tree = self::get_js_level_tree($lists_id,$v['id'],$tree,$level+1);
+  	}
+  		
+  	return $tree;
+  }  
+  
   static function get_choices_html_tree($lists_id,$parent_id = 0,$tree = '')
   {
     $count_query = db_query("select count(*) as total from app_global_lists_choices where lists_id = '" . db_input($lists_id). "' and parent_id='" . db_input($parent_id). "' order by sort_order, name");
@@ -181,5 +200,22 @@ class global_lists
     }
     
     return $html;
-  }   
+  }  
+  
+  public static function get_paretn_ids($id,$parents=array())
+  {
+  	$choices_query = db_query("select * from app_global_lists_choices where id = '" . db_input($id). "' order by sort_order, name");
+  	 
+  	while($v = db_fetch_array($choices_query))
+  	{
+  		$parents[] = $v['id'];
+  		 
+  		if($v['parent_id']>0)
+  		{
+  			$parents = self::get_paretn_ids($v['parent_id'],$parents);
+  		}
+  	}
+  	 
+  	return $parents;
+  }
 }

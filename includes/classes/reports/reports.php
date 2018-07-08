@@ -43,7 +43,7 @@ class reports
                        'reports_type'=>$reports_type,                                              
                        'in_menu'=>0,
                        'in_dashboard'=>0,
-                       'listing_order_fields'=>$default_reports['listing_order_fields'],
+                       'listing_order_fields'=>(isset($default_reports['listing_order_fields']) ? $default_reports['listing_order_fields'] : ''),
                        'created_by'=>$app_logged_users_id,
                        'parent_entity_id' => $parent_entity_id, 
                        'parent_item_id' => $parent_item_id,
@@ -52,16 +52,19 @@ class reports
       
       $reports_id = db_insert_id();
       
-      $filters_query = db_query("select rf.*, f.name from app_reports_filters rf left join app_fields f on rf.fields_id=f.id where rf.reports_id='" . db_input($default_reports['id']) . "' order by rf.id");
-      while($v = db_fetch_array($filters_query))
-      {
-        $sql_data = array('reports_id'=>$reports_id,
-                          'fields_id'=>$v['fields_id'],
-                          'filters_condition'=>$v['filters_condition'],                                              
-                          'filters_values'=>$v['filters_values'],
-                          );
-                                         
-        db_perform('app_reports_filters',$sql_data);
+      if($default_reports)
+      {	
+	      $filters_query = db_query("select rf.*, f.name from app_reports_filters rf left join app_fields f on rf.fields_id=f.id where rf.reports_id='" . db_input($default_reports['id']) . "' order by rf.id");
+	      while($v = db_fetch_array($filters_query))
+	      {
+	        $sql_data = array('reports_id'=>$reports_id,
+	                          'fields_id'=>$v['fields_id'],
+	                          'filters_condition'=>$v['filters_condition'],                                              
+	                          'filters_values'=>$v['filters_values'],
+	                          );
+	                                         
+	        db_perform('app_reports_filters',$sql_data);
+	      }
       }
       
       $reports_info_query = db_query("select * from app_reports where id='" . db_input($reports_id). "'");
@@ -191,7 +194,34 @@ class reports
       {                
         if($filters['filters_condition']=='empty_value')
         {
-          $sql_query[] = "length(field_" . $filters['fields_id'] . ")=0";
+        	switch($filters['type'])
+        	{
+        		case 'fieldtype_date_added':
+  					case 'fieldtype_input_date':
+  					case 'fieldtype_input_datetime':
+        		case 'fieldtype_dropdown':
+        		case 'fieldtype_progress':
+        				$sql_query[] = "field_" . $filters['fields_id'] . "=0";
+        			break;
+        		default:
+        				$sql_query[] = "length(field_" . $filters['fields_id'] . ")=0";
+        			break;
+        	}          
+        }
+        elseif($filters['filters_condition']=='not_empty_value')
+        {
+        	switch($filters['type'])
+        	{
+        		case 'fieldtype_date_added':
+        		case 'fieldtype_input_date':
+        		case 'fieldtype_input_datetime':
+        		case 'fieldtype_dropdown':
+        			$sql_query[] = "field_" . $filters['fields_id'] . ">0";
+        			break;
+        		default:
+        			$sql_query[] = "length(field_" . $filters['fields_id'] . ")>0";
+        			break;
+        	}
         }
         elseif(strlen($filters['filters_values'])>0)
         {       
@@ -240,6 +270,7 @@ class reports
   {
     $listing_sql_query_join = '';
     $listing_sql_query = '';
+    $listing_sql_query_from = '';
     
     $listing_order_fields_id = array();
     $listing_order_fields = array();
@@ -265,7 +296,7 @@ class reports
       } 
            
       //prepare order for fields
-      $field_info_query = db_query("select * from app_fields where id='" . db_input($field_id) . "'");
+      $field_info_query = db_query("select * from app_fields where id='" . db_input((int)$field_id) . "'");
       if($field_info = db_fetch_array($field_info_query))
       {
         $listing_order_fields_id[]=$field_id;
@@ -277,7 +308,33 @@ class reports
         {
           $listing_order_fields[] = 'e.' . str_replace('fieldtype_','',$field_info['type']) . ' ' . $order_cause;
         }
-        elseif(in_array($field_info['type'],array('fieldtype_dropdown','fieldtype_dropdown_multiple','fieldtype_checkboxes','fieldtype_radioboxes','fieldtype_grouped_users')))
+        elseif($field_info['type']=='fieldtype_dropdown_multilevel' and $field_cfg->get('value_displya_own_column'))
+        {
+        	$field_id_array = explode('-',$field_id);
+        	$level = $field_id_array[1];
+        	$field_id  = (int)$field_id;
+        	        	
+        	if($level==0)
+        	{
+        		$field_name_to_join .= "SUBSTRING_INDEX(field_" . $field_id . ",','," . ($level+1). ")";
+        	}
+        	else
+        	{
+        		$field_name_to_join = "REPLACE(SUBSTRING_INDEX(REPLACE(field_" . $field_id . ",SUBSTRING_INDEX(field_" . $field_id . ",','," . $level . "),''),','," . ($level+1). "),',','')";        	
+        	}
+        	
+        	if($field_cfg->get('use_global_list')>0)
+        	{
+        		$listing_sql_query_join .= " left join app_global_lists_choices {$alias} on {$alias}.id=" . $field_name_to_join;
+        	}
+        	else
+        	{
+        		$listing_sql_query_join .= " left join app_fields_choices {$alias} on {$alias}.id=" . $field_name_to_join; //field_" . (int)$field_id . "_level_" . $level;
+        	}
+        	
+        	$listing_order_fields[] = "{$alias}.sort_order " . $order_cause . ", {$alias}.name " . $order_cause;        	
+        }
+        elseif(in_array($field_info['type'],array('fieldtype_dropdown','fieldtype_dropdown_multiple','fieldtype_checkboxes','fieldtype_radioboxes','fieldtype_grouped_users','fieldtype_dropdown_multilevel')))
         {
           if($field_cfg->get('use_global_list')>0)
           {
@@ -362,6 +419,7 @@ class reports
                  'listing_sql_query_join'   => $listing_sql_query_join,
                  'listing_order_fields_id'  => $listing_order_fields_id,
                  'listing_order_fields'     => $listing_order_fields,
+								 'listing_sql_query_from'   => $listing_sql_query_from,	    						
                  'listing_order_clauses'    => $listing_order_clauses);    
   }
   
@@ -557,6 +615,8 @@ class reports
             
     for($i=1;$i<count($values);$i+=2)
     {
+    	if(!isset($values[$i+1])) continue;
+    	
       if(preg_match("/!=|>=|<=|>|</",$values[$i+1],$matches))
       {        
         $operator = $matches[0];
@@ -578,7 +638,10 @@ class reports
           break;
       }
       
-    }            
+    }    
+    
+    //print_r($sql_or);
+    //print_r($sql_and);
     
     if(count($sql_or)>0) $sql[] = "(" . implode(' or ', $sql_or) . ")";
     if(count($sql_and)>0) $sql[] = "(" . implode(' and ', $sql_and) . ")";
@@ -623,7 +686,7 @@ class reports
       $edit_url = url_for('reports/filters_form','id=' . $v['id'] . '&reports_id=' . $report_id . '&redirect_to=' . $redirect_to . $url_params);
       $delete_url = url_for('reports/filters','action=delete&id=' . $v['id'] . '&reports_id=' . $report_id . '&redirect_to=' . $redirect_to . $url_params);
       
-      if(in_array($v['filters_condition'],array('empty_value','filter_by_overdue')))
+      if(in_array($v['filters_condition'],array('empty_value','not_empty_value','filter_by_overdue')))
       {
         $fitlers_values = reports::get_condition_name_by_key($v['filters_condition']);
       }
@@ -750,10 +813,12 @@ class reports
       case 'fieldtype_input_numeric_comments':
           $html = $filters_values;        
         break;
+      case 'fieldtype_autostatus':
       case 'fieldtype_checkboxes':
       case 'fieldtype_radioboxes':
       case 'fieldtype_dropdown':
       case 'fieldtype_dropdown_multiple':
+      case 'fieldtype_dropdown_multilevel':
       case 'fieldtype_grouped_users':
       
           $cfg = new fields_types_cfg($field_info['configuration']);
@@ -781,6 +846,14 @@ class reports
           $html = implode($separator,$list);
           
         break;
+      case 'fieldtype_progress':
+      	$list = array();
+      	foreach(explode(',',$filters_values) as $v)
+      	{
+      		$list[] = $v . '%';
+      	}
+      	$html = implode($separator,$list);
+      	break;
       case 'fieldtype_boolean':
           $html = fieldtype_boolean::get_boolean_value($field_info,$filters_values);
         break;  
@@ -791,23 +864,30 @@ class reports
           
           if(strlen($values[0])>0)
           {
-          	switch($filters_condition)
+          	if(in_array($filters_condition,array('empty_value','not_empty_value','filter_by_overdue')))
           	{
-          		case 'filter_by_days':
-          				$html = TEXT_FILTER_BY_DAYS;
-          			break;
-          		case 'filter_by_week':
-          				$html = TEXT_FILTER_BY_WEEK;
-          			break;
-          		case 'filter_by_month':
-          				$html = TEXT_FILTER_BY_MONTH;
-          			break;
-          		case 'filter_by_year':
-          				$html = TEXT_FILTER_BY_YEAR;
-          			break;
+          		$html = '';
           	}
-          	
-            $html .=  ': ' . $values[0];
+          	else
+          	{	
+	          	switch($filters_condition)
+	          	{
+	          		case 'filter_by_days':
+	          				$html = TEXT_FILTER_BY_DAYS;
+	          			break;
+	          		case 'filter_by_week':
+	          				$html = TEXT_FILTER_BY_WEEK;
+	          			break;
+	          		case 'filter_by_month':
+	          				$html = TEXT_FILTER_BY_MONTH;
+	          			break;
+	          		case 'filter_by_year':
+	          				$html = TEXT_FILTER_BY_YEAR;
+	          			break;
+	          	}
+	          	
+	            $html .=  ': ' . $values[0];
+          	}
           }
           else
           {                    
@@ -857,13 +937,19 @@ class reports
       case 'empty_value':
           return TEXT_CONDITION_EMPTY_VALUE;
         break;
+      case 'not_empty_value':
+        	return TEXT_CONDITION_NOT_EMPTY_VALUE;
+        break;
       case 'filter_by_overdue':
           return TEXT_FILTER_BY_OVERDUE_DATE;
         break;
+      default:
+      	return TEXT_CONDITION_INCLUDE;
+      	break;
     }
   }
   
-  public static function get_count_fixed_columns($reports_id)
+  public static function get_count_fixed_columns($reports_id, $has_with_selected=1)
   {
     $reports_info_query = db_query("select * from app_reports where id='" . db_input($reports_id) . "'");
     if($reports_info = db_fetch_array($reports_info_query))
@@ -871,9 +957,31 @@ class reports
       $cfg = entities::get_cfg($reports_info['entities_id']);
       
       $number_fixed_field = (int)$cfg['number_fixed_field_in_listing'];
-      $number_fixed_field = ($number_fixed_field>0 ? ($number_fixed_field+1):0);
+      $number_fixed_field = ($number_fixed_field>0 ? ($number_fixed_field+$has_with_selected):0);
       
       return $number_fixed_field;
     }    
+  }
+  
+  public static function force_filter_by($filter_by)
+  {
+  	$filter_by = explode(':', $filter_by);
+  	
+  	$field_query = db_query("select id, type, entities_id from app_fields where id='" . db_input($filter_by[0]) . "'");
+  	if($field = db_fetch_array($field_query))
+  	{	
+  		switch($field['type'])
+  		{
+  			case 'fieldtype_dropdown':
+  			case 'fieldtype_autostatus':
+  			case 'fieldtype_radioboxes':
+  				return " and e.field_" . $filter_by[0] . " = '" . $filter_by[1] . "'";
+  				break;
+  			default:  				
+  				return " and (select count(*) from app_entity_" . $field['entities_id'] . "_values as cv where cv.items_id=e.id and cv.fields_id='" . db_input($field['id'])  . "' and cv.value in (" . $filter_by[1] . "))>0";
+  				break;
+  		}
+  		
+  	}
   }
 }

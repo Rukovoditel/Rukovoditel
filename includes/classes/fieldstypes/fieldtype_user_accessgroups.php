@@ -6,11 +6,13 @@ class fieldtype_user_accessgroups
   
   function __construct()
   {
-    $this->options = array('name' => TEXT_FIELDTYPE_USER_ACCESSGROUP_TITLE);
+    $this->options = array('name' => TEXT_FIELDTYPE_USER_ACCESSGROUP_TITLE,'title' => TEXT_FIELDTYPE_USER_ACCESSGROUP_TITLE);
   }
   
   function render($field,$obj,$params = array())
-  {      
+  {     
+  	global $app_user, $app_module_path;
+  	
     if(($default_group_id = access_groups::get_default_group_id())>0 and strlen($obj['field_' . $field['id']])==0)
     {
       $value = $default_group_id;
@@ -20,7 +22,22 @@ class fieldtype_user_accessgroups
       $value = $obj['field_' . $field['id']];
     }
     
-    return select_tag('fields[' . $field['id'] . ']',access_groups::get_choices(),$value,array('class'=>'form-control input-medium'));
+    if($app_module_path=='users/registration')
+    {
+    	$choices = array();
+    	$groups_query = db_fetch_all('app_access_groups','id in (' . CFG_PUBLIC_REGISTRATION_USER_GROUP . ')','sort_order, name');
+    	while($v = db_fetch_array($groups_query))
+    	{
+    		$choices[$v['id']] = $v['name'];
+    	}
+    }
+    else
+    {
+    	$include_administrator = ($app_user['group_id']>0 ? false : true);
+    	$choices = access_groups::get_choices($include_administrator);
+    }
+    
+    return select_tag('fields[' . $field['id'] . ']',$choices,$value,array('class'=>'form-control input-medium field_' . $field['id']));
   }
   
   function process($options)

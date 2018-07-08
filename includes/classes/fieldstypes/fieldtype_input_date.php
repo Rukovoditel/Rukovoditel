@@ -32,6 +32,9 @@ class fieldtype_input_date
                    'tooltip'=>TEXT_DAYS_BEFORE_DATE_TIP);
     
     $cfg[] = array('title'=>TEXT_IS_UNIQUE_FIELD_VALUE, 'name'=>'is_unique','type'=>'checkbox','tooltip_icon'=>TEXT_IS_UNIQUE_FIELD_VALUE_TIP);
+    $cfg[] = array('title'=>TEXT_ERROR_MESSAGE, 'name'=>'unique_error_msg','type'=>'input','tooltip_icon'=>TEXT_UNIQUE_FIELD_VALUE_ERROR_MSG_TIP,'tooltip'=>TEXT_DEFAULT . ': ' . TEXT_UNIQUE_FIELD_VALUE_ERROR,'params'=>array('class'=>'form-control input-xlarge'));
+    
+    $cfg[] = array('title'=>TEXT_HIDE_FIELD_IF_EMPTY, 'name'=>'hide_field_if_empty','type'=>'checkbox','tooltip_icon'=>TEXT_HIDE_FIELD_IF_EMPTY_TIP);
                              
     return $cfg;
   } 
@@ -60,14 +63,18 @@ class fieldtype_input_date
       $value = date('Y-m-d',strtotime("+" . (int)$cfg->get('default_value') . " day"));                                                            
     }
     
-    return '<div class="input-group input-medium date datepicker">' . input_tag('fields[' . $field['id'] . ']',$value,array('class'=>'form-control fieldtype_input_date field_' . $field['id'] . ($field['is_required']==1 ? ' required':'') . ($cfg->get('is_unique')==1 ? ' is-unique':'') )) . '<span class="input-group-btn"><button class="btn btn-default date-set" type="button"><i class="fa fa-calendar"></i></button></span></div>';
+    $attributes  = array('class'=>'form-control fieldtype_input_date field_' . $field['id'] . ($field['is_required']==1 ? ' required':'') . ($cfg->get('is_unique')==1 ? ' is-unique':''));
+    
+    $attributes = fields_types::prepare_uniquer_error_msg_param($attributes,$cfg);
+    
+    return '<div class="input-group input-medium date datepicker">' . input_tag('fields[' . $field['id'] . ']',$value,  $attributes ) . '<span class="input-group-btn"><button class="btn btn-default date-set" type="button"><i class="fa fa-calendar"></i></button></span></div>';
   }
   
   function process($options)
   {
   	global $app_changed_fields;
   	
-  	$value = get_date_timestamp($options['value']);
+  	$value = (int)get_date_timestamp($options['value']);
   	
   	if(!$options['is_new_item'])
   	{
@@ -75,7 +82,12 @@ class fieldtype_input_date
   	
   		if($value!=$options['current_field_value'] and $cfg->get('notify_when_changed')==1)
   		{
-  			$app_changed_fields[] = array('name'=>$options['field']['name'],'value'=>format_date($value));
+  			$app_changed_fields[] = array(
+  					'name'=>$options['field']['name'],
+  					'value'=>format_date($value),
+  					'fields_id'=>$options['field']['id'],
+  					'fields_value'=>$value,
+  			);
   		}
   	}
   	
@@ -84,7 +96,7 @@ class fieldtype_input_date
   
   function output($options)
   {
-    if(isset($options['is_export']))
+    if(isset($options['is_export']) and strlen($options['value'])>0 and $options['value']!=0)
     {
       return format_date($options['value']);
     }

@@ -92,7 +92,8 @@
     $params = array();
     if (is_array($_GET) && (sizeof($_GET) > 0)) {
       reset($_GET);
-      while (list($key, $value) = each($_GET)) {
+      foreach($_GET as $key=>$value)
+      {
         if ( is_string($value) && (strlen($value) > 0) && ($key != session_name()) && ($key != 'error') && ($key != 'module') && (!in_array($key, $exclude_array)) && ($key != 'x') && ($key != 'y') ) {
           $params[] = $key . '=' . rawurlencode(stripslashes($value));
         }
@@ -104,7 +105,7 @@
   
   function auto_link_text($text)
   {            
-    $pattern = '/([^"]|^)(((http[s]?:\/\/(.+(:.+)?@)?))[a-z0-9](([-a-z0-9]+\.)*\.[a-z]{2,})?\/?[a-z0-9()$.,_\/~#&=:;%+!?-]+)/i';
+    $pattern = '/(?s)<pre[^<]*>.*?<\\/pre>(*SKIP)(*F)|([^"]|^)(((http[s]?:\/\/(.+(:.+)?$)?))[a-z0-9](([-a-z0-9]+\.)*\.[a-z]{2,})?\/?[a-z0-9()$.,_\/~#&=:;%+!?-]+)/i';
     
     $text = preg_replace_callback($pattern,'callback_prepare_link_in_text',$text);
                                         
@@ -112,7 +113,7 @@
   } 
   
   function callback_prepare_link_in_text($matches)
-  {                
+  {     	  	  
     $scheme = (is_ssl() ? 'https://':'http://');
     $host = $_SERVER['HTTP_HOST'];
     

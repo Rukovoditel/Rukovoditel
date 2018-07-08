@@ -6,7 +6,7 @@ class fieldtype_user_firstname
   
   function __construct()
   {
-    $this->options = array('name' => TEXT_FIELDTYPE_USER_FIRSTNAME_TITLE);
+    $this->options = array('name' => TEXT_FIELDTYPE_USER_FIRSTNAME_TITLE,'title' =>TEXT_FIELDTYPE_USER_FIRSTNAME_TITLE );
   }
   
   function render($field,$obj,$params = array())

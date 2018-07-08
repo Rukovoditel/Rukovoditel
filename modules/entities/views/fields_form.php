@@ -123,7 +123,14 @@ if(count($forms_tabs_choices)==1) echo input_hidden_tag('forms_tabs_id',key($for
 <script>
 
   $(function() { 
-    $('#fields_form').validate({ignore:'',invalidHandler: function(e, validator) {
+    $('#fields_form').validate({ignore:'',
+    	
+			submitHandler: function(form){
+				app_prepare_modal_action_loading(form)
+				form.submit();
+			},
+    
+      invalidHandler: function(e, validator) {
 			var errors = validator.numberOfInvalids();
       
         if (errors) {
@@ -165,7 +172,7 @@ function check_is_heading_option()
 {
    selected_type = $('#type').val()
    
-   if($.inArray(selected_type,["fieldtype_input_numeric_comments","fieldtype_input_url","fieldtype_attachments","fieldtype_input_file","fieldtype_image","fieldtype_textarea_wysiwyg","fieldtype_formula","fieldtype_related_records","fieldtype_boolean"])==-1)
+   if($.inArray(selected_type,["fieldtype_section","fieldtype_input_numeric_comments","fieldtype_input_url","fieldtype_attachments","fieldtype_input_file","fieldtype_image","fieldtype_textarea_wysiwyg","fieldtype_formula","fieldtype_related_records","fieldtype_boolean"])==-1)
    {
      $('#is-heading-container').show() 
    }

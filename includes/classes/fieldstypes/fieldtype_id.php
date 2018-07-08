@@ -6,7 +6,7 @@ class fieldtype_id
   
   function __construct()
   {
-    $this->options = array('name'=>TEXT_FIELDTYPE_ID_TITLE);
+    $this->options = array('name'=>TEXT_FIELDTYPE_ID_TITLE, 'title'=>TEXT_FIELDTYPE_ID_TITLE);    
   }
   
   function output($options)

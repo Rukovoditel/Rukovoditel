@@ -38,6 +38,15 @@
         //use when import users
         $already_exist_username = array();
         
+        $count_items_added = 0;
+        $count_items_updated = 0;
+        
+        //create chocies cahce to reduce sql queries
+        $choices_names_to_id = array();
+        $global_choices_names_to_id = array();
+        $choices_parents_to_id = array();
+        $global_choices_parents_to_id = array();
+        
         //start import
         for ($row = $first_row; $row < count($worksheet); ++$row)
         {        
@@ -74,52 +83,188 @@
         							
         							$sql_data['field_' . $field_id] = $value;
         						break;
+        					case 'fieldtype_entity':
+        						$value = trim($worksheet[$row][$col]);
+        						
+        						if($heading_id = fields::get_heading_id($cfg->get('entity_id')))
+        						{
+        							$heading_field_info = db_find('app_fields',$heading_id);
+        							if($heading_field_info['type']=='fieldtype_input')
+        							{
+        								$item_query = db_query("select id from app_entity_" . $cfg->get('entity_id') . " where field_" . $heading_id . "='" . db_input($value). "'");
+        								if($item = db_fetch_array($item_query))
+        								{
+        									$sql_data['field_' . $field_id] = $item['id'];
+        									$item_id = $item['id']; 
+        								}
+        								else
+        								{
+        									$item_sql_data = array();
+        									$item_sql_data['field_' . $heading_id] = trim($value);
+        									$item_sql_data['date_added'] = time();
+        									$item_sql_data['created_by'] = $app_logged_users_id;
+        									$item_sql_data['parent_item_id'] = 0;
+        									         									        									
+        									db_perform('app_entity_' . $cfg->get('entity_id'),$item_sql_data);
+        									 
+        									$item_id = db_insert_id();
+        									
+        									$sql_data['field_' . $field_id] = $item_id;
+        								}
+        								
+        								//prepare choices values
+        								$choices_values[$field_id][] = $sql_data['field_' . $field_id];
+        							}
+        						}
+        						break;
         					case 'fieldtype_dropdown':
         					case 'fieldtype_radioboxes':
         						$value = trim($worksheet[$row][$col]);
         
         						if($cfg->get('use_global_list')>0)
         						{
-        							$fields_choices_info_query = db_query("select * from app_global_lists_choices where name='" . db_input($value) . "' and lists_id='" . db_input($cfg->get('use_global_list')) . "'");
-        							if($fields_choices_info = db_fetch_array($fields_choices_info_query))
+        							if(isset($global_choices_names_to_id[$value]))
         							{
-        								$sql_data['field_' . $field_id] = $fields_choices_info['id'];
+        								$sql_data['field_' . $field_id] = $global_choices_names_to_id[$value];
         							}
         							else
         							{
-        								$field_sql_data = array('lists_id'=>$cfg->get('use_global_list'),
-        										'parent_id'=>0,
-        										'name'=>$value);
-        								db_perform('app_global_lists_choices',$field_sql_data);
-        								 
-        								$item_id = db_insert_id();
-        								 
-        								$sql_data['field_' . $field_id] = $item_id;
+	        							$fields_choices_info_query = db_query("select * from app_global_lists_choices where name='" . db_input($value) . "' and lists_id='" . db_input($cfg->get('use_global_list')) . "'");
+	        							if($fields_choices_info = db_fetch_array($fields_choices_info_query))
+	        							{
+	        								$sql_data['field_' . $field_id] = $fields_choices_info['id'];
+	        								
+	        								$global_choices_names_to_id[$value] = $fields_choices_info['id'];
+	        							}
+	        							else
+	        							{
+	        								$field_sql_data = array('lists_id'=>$cfg->get('use_global_list'),
+	        										'parent_id'=>0,
+	        										'name'=>$value);
+	        								db_perform('app_global_lists_choices',$field_sql_data);
+	        								 
+	        								$item_id = db_insert_id();
+	        								 
+	        								$sql_data['field_' . $field_id] = $item_id;
+	        								
+	        								$global_choices_names_to_id[$value] = $item_id;
+	        							}
         							}
         						}
         						else
         						{
-        							$fields_choices_info_query = db_query("select * from app_fields_choices where name='" . db_input($value) . "' and fields_id='" . db_input($field_id) . "'");
-        							if($fields_choices_info = db_fetch_array($fields_choices_info_query))
+        							if(isset($choices_names_to_id[$value]))
         							{
-        								$sql_data['field_' . $field_id] = $fields_choices_info['id'];
+        								$sql_data['field_' . $field_id] = $choices_names_to_id[$value];
         							}
         							else
         							{
-        								$field_sql_data = array('fields_id'=>$field_id,
-        										'parent_id'=>0,
-        										'name'=>$value);
-        								db_perform('app_fields_choices',$field_sql_data);
-        								 
-        								$item_id = db_insert_id();
-        								 
-        								$sql_data['field_' . $field_id] = $item_id;
+	        							$fields_choices_info_query = db_query("select * from app_fields_choices where name='" . db_input($value) . "' and fields_id='" . db_input($field_id) . "'");
+	        							if($fields_choices_info = db_fetch_array($fields_choices_info_query))
+	        							{
+	        								$sql_data['field_' . $field_id] = $fields_choices_info['id'];
+	        								
+	        								$choices_names_to_id[$value] = $fields_choices_info['id'];
+	        							}
+	        							else
+	        							{
+	        								$field_sql_data = array('fields_id'=>$field_id,
+	        										'parent_id'=>0,
+	        										'name'=>$value);
+	        								db_perform('app_fields_choices',$field_sql_data);
+	        								 
+	        								$item_id = db_insert_id();
+	        								 
+	        								$sql_data['field_' . $field_id] = $item_id;
+	        								
+	        								$choices_names_to_id[$value] = $item_id;
+	        							}
         							}
         						}
         
         						//prepare choices values
         						$choices_values[$field_id][] = $sql_data['field_' . $field_id];
         
+        						break;
+        					case 'fieldtype_dropdown_multilevel':
+        							$values_list = array();
+        							$value = trim($worksheet[$row][$col]);
+		        					
+		        					if(strlen($value))
+		              		{   		              			
+		              			$value_id = 0;
+		              			
+		              			if($cfg->get('use_global_list')>0)
+		              			{	
+		              				if(isset($global_choices_names_to_id[$value]))
+		              				{
+		              					$value_id = $global_choices_names_to_id[$value];
+		              				}
+		              				else
+		              				{
+		              					$fields_choices_info_query = db_query("select * from app_global_lists_choices where name='" . db_input(trim($value)) . "' and lists_id='" . db_input($cfg->get('use_global_list')) . "'");
+		              					if($fields_choices_info = db_fetch_array($fields_choices_info_query))
+		              					{
+		              						$value_id = $fields_choices_info['id'];
+		              						$global_choices_names_to_id[$value] = $value_id;
+		              					}
+		              				}
+		              			}
+		              			else
+		              			{		
+		              				if(isset($choices_names_to_id[$value]))
+		              				{
+		              					$value_id = $choices_names_to_id[$value];
+		              				}
+		              				else
+		              				{
+		              					$fields_choices_info_query = db_query("select * from app_fields_choices where name='" . db_input(trim($value)) . "' and fields_id='" . db_input($field_id) . "'");
+		              					if($fields_choices_info = db_fetch_array($fields_choices_info_query))
+		              					{
+		              						$value_id = $fields_choices_info['id'];
+		              						$choices_names_to_id[$value] = $value_id;
+		              					}
+		              				}
+		              			}	
+		              			
+		              			if($value_id>0)
+		              			{
+		              				if($cfg->get('use_global_list'))
+		              				{
+		              					if(isset($global_choices_parents_to_id[$value_id]))
+		              					{
+		              						$value_array = $global_choices_parents_to_id[$value_id];
+		              					}
+		              					else
+		              					{
+		              						$value_array =  global_lists::get_paretn_ids($value_id);
+		              						
+		              						$global_choices_parents_to_id[$value_id] = $value_array;
+		              					}
+		              				}
+		              				else
+		              				{
+		              					if(isset($choices_parents_to_id[$value_id]))
+		              					{
+		              						$value_array = $choices_parents_to_id[$value_id];
+		              					}
+		              					else
+		              					{
+		              						$value_array = fields_choices::get_paretn_ids($value_id);
+		              						
+		              						$choices_parents_to_id[$value_id] = $value_array;
+		              					}
+		              				}	
+			              						              			
+			              			$values_list = array_reverse($value_array);
+			              			
+			              			//prepare choices values
+			              			$choices_values[$field_id] = $values_list;
+			              			
+			              			$sql_data['field_' . $field_id] = implode(',',$values_list);
+		              			}
+		              		}
+		              				              		        						
         						break;
         					case 'fieldtype_dropdown_multiple':
         					case 'fieldtype_checkboxes':
@@ -222,30 +367,63 @@
         		}
         		        		
         	}
-					
-        	//set other values
-        	$sql_data['date_added'] = time();
-        	$sql_data['created_by'] = $app_logged_users_id;
-        	$sql_data['parent_item_id'] = (int)$parent_item_id;
-        
-        	//echo '<pre>';
-        	//print_r($sql_data);
-        
-        	db_perform('app_entity_' . $entities_id,$sql_data);
-        
-        	$item_id = db_insert_id();
-        
-        	//insert choices values if exist
-        	if(count($choices_values)>0)
+        	        	
+        	//do update
+        	$item_has_updated = false;
+        	if($_POST['import_action']=='update' or $_POST['import_action']=='update_import')
         	{
-        		foreach($choices_values as $field_id=>$values)
+        		$field_info = db_find('app_fields',$_POST['update_by_field']);
+        		 
+        		$use_column_value = $worksheet[$row][$_POST['update_use_column']];
+        		
+        		if($field_info['type']=='fieldtype_id')
         		{
-        			foreach($values as $value)
-        			{
-        				db_query("INSERT INTO app_entity_" . $entities_id . "_values (items_id, fields_id, value) VALUES ('" . $item_id . "', '" . $field_id . "', '" . $value . "');");
-        			}
-        
+        			$where_sql = " where id='" . db_input($use_column_value) . "'";
         		}
+        		else 
+        		{
+        			$where_sql = " where field_" . $field_info['id'] . "='" . db_input($use_column_value) . "'";
+        		}
+        		
+        		$item_query = db_query("select id from app_entity_" . $entities_id . $where_sql);
+        		if($item = db_fetch_array($item_query) and count($sql_data))
+        		{        			
+        			db_perform('app_entity_' . $entities_id,$sql_data,'update',"id=" . $item['id']);
+        			$item_has_updated = true;
+        			
+        			$count_items_updated++;
+        		}        		        		
+        	}
+        	        						
+        	//do insert
+        	if(!$item_has_updated and ($_POST['import_action']=='import' or $_POST['import_action']=='update_import'))
+        	{
+	        	//set other values
+	        	$sql_data['date_added'] = time();
+	        	$sql_data['created_by'] = $app_logged_users_id;
+	        	$sql_data['parent_item_id'] = (int)$parent_item_id;
+	        
+	        	//echo '<pre>';
+	        	//print_r($sql_data);
+	        
+	        	db_perform('app_entity_' . $entities_id,$sql_data);
+	        
+	        	$item_id = db_insert_id();
+	        	
+	        	$count_items_added++;
+	        
+	        	//insert choices values if exist
+	        	if(count($choices_values)>0)
+	        	{
+	        		foreach($choices_values as $field_id=>$values)
+	        		{
+	        			foreach($values as $value)
+	        			{
+	        				db_query("INSERT INTO app_entity_" . $entities_id . "_values (items_id, fields_id, value) VALUES ('" . $item_id . "', '" . $field_id . "', '" . $value . "');");
+	        			}
+	        
+	        		}
+	        	}
         	}
         
         }  
@@ -257,6 +435,22 @@
         {
         	$alerts->add(TEXT_USERS_IMPORT_ERROR . ' ' . implode(', ',$already_exist_username),'warning');
         }
+        
+        switch($_POST['import_action'])
+        {
+        	case 'import':
+        		$alerts->add(TEXT_COUNT_ITEMS_ADDED . ' ' . $count_items_added,'success');
+        		break;
+        	case 'update':
+        		$alerts->add(TEXT_COUNT_ITEMS_UPDATED . ' ' . $count_items_updated,'success');
+        		break;
+        	case 'update_import':
+        		$alerts->add(TEXT_COUNT_ITEMS_UPDATED . ' ' . $count_items_updated . '. ' . TEXT_COUNT_ITEMS_ADDED . ' ' . $count_items_added,'success');
+        		break;
+        }
+        
+        //reset import fields session
+        $import_fields = array();
                                 
         $entity_info = db_find('app_entities',$entities_id);
                          
@@ -302,14 +496,32 @@
         $entity_id = $_POST['entity_id'];
         
         $entity_info = db_find('app_entities',$entity_id);
+        $parent_entity_info = db_find('app_entities',$entity_info['parent_id']);
         
         if($entity_info['parent_id']>0)
-        {
-        	$items_search = new items_search($entity_info['parent_id']);        
-        	$choices = array(''=>'')+$items_search->get_choices();
+        {        	        
         	
-          $parent_entity_info = db_find('app_entities',$entity_info['parent_id']);
-          
+        	
+        	$choices = array(''=>'');
+        	
+        	$items_sql_query = "select e.* from app_entity_" . $entity_info['parent_id'] . " e " . items::add_listing_order_query_by_entity_id($entity_info['parent_id']);
+        	$items_query = db_query($items_sql_query);
+        	while($items = db_fetch_array($items_query))
+        	{
+        		//add paretn item name if exist
+        		$parent_name = '';
+        	
+        		if($parent_entity_info['parent_id']>0 and $items['parent_item_id']>0)
+        		{        			
+        			$parent_name = items::get_heading_field($parent_entity_info['parent_id'],$items['parent_item_id']) . ' / ';        			
+        		}
+        	
+        		$name = items::get_heading_field($entity_info['parent_id'],$items['id']);
+        	
+        		$choices[$items['id']] = $parent_name . $name;        	
+        	}
+        	                              
+                    
           echo '
            <div class="form-group">
           	<label class="col-md-3 control-label" for="name">' . $parent_entity_info['name'] . '</label>

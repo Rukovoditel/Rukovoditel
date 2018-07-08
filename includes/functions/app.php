@@ -1,4 +1,83 @@
 <?php
+
+// Write out serialized data.
+//  write_cache uses serialize() to store $var in $filename.
+//  $var      -  The variable to be written out.
+//  $filename -  The name of the file to write to.
+function app_write_cache(&$var, $filename, $is_cache = true) 
+{
+	//check if cache is enabled
+	if(!$is_cache) return false;
+	
+	$filename = DIR_FS_CACHE . $filename;
+	$success = false;
+
+	// try to open the file
+	if ($fp = @fopen($filename, 'w')) {
+		// obtain a file lock to stop corruptions occuring
+		flock($fp, 2); // LOCK_EX
+		// write serialized data
+		fputs($fp, serialize($var));
+		// release the file lock
+		flock($fp, 3); // LOCK_UN
+		fclose($fp);
+		$success = true;
+	}
+
+	return $success;
+}
+
+//  Read in seralized data.
+//  read_cache reads the serialized data in $filename and
+//  fills $var using unserialize().
+//  $var      -  The variable to be filled.
+//  $filename -  The name of the file to read.
+function app_read_cache(&$var, $filename, $auto_expire = false, $is_cache = true)
+{	
+	$filename = DIR_FS_CACHE . $filename;
+	
+	//check if cache is enabled
+	if(!$is_cache or !file_exists($filename)) return false;
+		
+	$success = false;
+		
+	if (($auto_expire>0) && file_exists($filename)) {
+		$now = time();
+		$filetime = filemtime($filename);
+		$difference = $now - $filetime;
+
+		if ($difference >= $auto_expire) {
+			return false;
+		}
+	}
+		
+	// try to open file
+	if ($fp = @fopen($filename, 'r')) {
+		// read in serialized data
+		$szdata = fread($fp, filesize($filename));
+		fclose($fp);
+		// unserialze the data
+		$var = unserialize($szdata);
+
+		$success = true;
+	}
+		
+	return $success;
+}
+
+
+function app_path_get_parent_path($path)
+{
+	$current_path_array = explode('/',$path);
+	$parent_patth_array = array();
+	for($i=0;$i<count($current_path_array)-1;$i++)
+	{
+		$parent_patth_array[] = $current_path_array[$i];
+	}
+			
+	return implode('/',$parent_patth_array);
+}
+
 function render_login_page_background()
 {
 	$html = '';
@@ -116,12 +195,20 @@ function day_diff($start, $end, $exclude = array())
   return $count;
 }
 
-function render_bool_value($v)
+function render_bool_value($v,$is_label = true)
 {
-  return ($v==1 ? '<span class="text-yes">' . TEXT_YES . '</span>': '<span class="text-no">' . TEXT_NO . '</span>');
+	if($is_label)
+	{
+		return ($v==1 ? '<span class="label label-success">' . TEXT_YES . '</span>': '<span class="label label-default">' . TEXT_NO . '</span>');
+	}
+	else
+	{
+  	return ($v==1 ? '<span class="text-yes">' . TEXT_YES . '</span>': '<span class="text-no">' . TEXT_NO . '</span>');
+	}
+  
 }
 
-function render_listing_search_form($entity_id,$listing_container,$reports_id)
+function render_listing_search_form($entity_id,$listing_container,$reports_id,$input_width = 'input-medium')
 {
   if(count($search_fields = fields::get_search_feidls($entity_id))==0)
   {
@@ -171,7 +258,7 @@ function render_listing_search_form($entity_id,$listing_container,$reports_id)
   $html = '
   <form id="' . $listing_container . '_search_form" class="navbar-search pull-right" onSubmit="load_items_listing(\'' . $listing_container . '\',1); return false;">
     
-    <div class="input-group input-medium">
+    <div class="input-group ' . $input_width . '">
     
       <div class="input-group-btn">
   			<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-hover="dropdown"><i class="fa fa-angle-down"></i></button>
@@ -181,7 +268,7 @@ function render_listing_search_form($entity_id,$listing_container,$reports_id)
   			</div>
   		</div>
         	
-  		' . input_tag($listing_container. '_search_keywords',$listing_search->get('search_keywords'),array('placeholder'=>TEXT_SEARCH,'class'=>'form-control input-medium')) . '
+  		' . input_tag($listing_container. '_search_keywords',$listing_search->get('search_keywords'),array('placeholder'=>TEXT_SEARCH,'class'=>'form-control ' . $input_width )) . '
   		<span class="input-group-btn">  			
         <button ' .  tag_attributes_to_html(array('title'=>TEXT_BUTTON_SEARCH))  . ' class="btn btn-info" ><i class="fa fa-search"></i></button>
   		</span>
@@ -196,11 +283,11 @@ function render_comments_search_form($entity_id,$listing_container)
 
   
   $html = '
-  <form id="' . $listing_container . '_search_form" class="navbar-search pull-right" onSubmit="load_items_listing(\'' . $listing_container . '\',1); return false;">    
-    <div class="input-group input-medium">      
-  		<input id="' . $listing_container. '_search_keywords" type="text" placeholder="' . TEXT_SEARCH . '" class="form-control input-medium">
+  <form id="' . $listing_container . '_search_form" class="navbar-search pull-right" onSubmit="load_comments_listing(\'' . $listing_container . '\',1); return false;">    
+    <div class="input-group input-small">      
+  		<input id="' . $listing_container. '_search_keywords" type="text" placeholder="' . TEXT_SEARCH . '" class="form-control input-small input-sm">
   		<span class="input-group-btn">  			
-        <button' .  tag_attributes_to_html(array('title'=>TEXT_BUTTON_SEARCH))  . ' class="btn btn-info" onClick="$(\'#' . $listing_container . '_search_form\').submit();"><i class="fa fa-search"></i></button>
+        <button' .  tag_attributes_to_html(array('title'=>TEXT_BUTTON_SEARCH))  . ' class="btn btn-info btn-sm" onClick="$(\'#' . $listing_container . '_search_form\').submit();"><i class="fa fa-search"></i></button>
   		</span>
   	</div>
   </form>';
@@ -440,7 +527,7 @@ function ajax_modal_template_footer_simple()
 
 function render_bg_color_block($color,$value=false)
 {
-   if(strlen($color)>0)
+   if(strlen(trim($color))>0)
    {
     if(!$value)
     {
@@ -554,52 +641,26 @@ function app_send_new_comment_notification($comments_id,$item_id,$entity_id)
                  
   $item = db_find('app_entity_' . $entity_id,$item_id);
   
-  //start build $send_to array         
-  $send_to = array();
-  
-  //add assigned users to notification
-  $fields_query = db_query("select f.* from app_fields f where f.type in ('fieldtype_grouped_users','fieldtype_users') and  f.entities_id='" . db_input($entity_id) . "' ");
-  while($field = db_fetch_array($fields_query))
-  { 
-  	$field_value = $item['field_' . $field['id']];
-  	
-  	switch($field['type'])
-  	{
-  		case 'fieldtype_grouped_users':
-  				if(strlen($field_value)>0)
-  				{
-  					foreach(explode(',',$field_value) as $choices_id)
-  					{
-  						$choice_query = db_query("select * from app_fields_choices where id='" . db_input($choices_id) . "'");
-  						if($choice = db_fetch_array($choice_query))
-  						{
-  							foreach(explode(',',$choice['users']) as $id)
-  							{
-  								$send_to[] = $id;
-  							}
-  						}
-  					}
-  				}
-  			break;
-  		case 'fieldtype_users':
-	  			if(strlen($field_value)>0)
-	  			{
-	  				$send_to = array_merge($send_to,explode(',',$field_value));
-	  			}
-  			break;
-  	}       
-  } 
-  
+  $send_to = items::get_send_to($entity_id,$item_id,$item);
+       
   //print_r($send_to);
   //exit();
   
   //send to suers who made comments and not assigned to item
-  $comments_query = db_query("select * from app_comments where entities_id='" . db_input($entity_id) . "' and items_id='" . db_input($item_id) . "'");
+  $comments_query = db_query("select * from app_comments where entities_id='" . db_input($entity_id) . "' and items_id='" . db_input($item_id) . "'" . (count($send_to) ? " and created_by not in (" . implode(',',$send_to). ")":''));
   while($comments = db_fetch_array($comments_query))
   {
     if(!in_array($comments['created_by'],$send_to))
     {
-      $send_to[] = $comments['created_by'];
+    	//check if user has access to item    	
+    	if(users::has_access_to_entity($entity_id,'view_assigned',$app_users_cache[$comments['created_by']]['group_id']))
+    	{
+    		if(!in_array($comments['created_by'],$send_to)) continue;	
+    	}
+    	elseif(users::has_access_to_entity($entity_id,'view',$app_users_cache[$comments['created_by']]['group_id']))
+    	{
+    		$send_to[] = $comments['created_by'];
+    	}      
     }
   }
   
@@ -640,6 +701,7 @@ function app_send_new_comment_notification($comments_id,$item_id,$entity_id)
     {      
     	
     	//check comments access and exclude users which don't have access to comments
+    	if(isset($app_users_cache[$user_id]['group_id']))
     	if($app_users_cache[$user_id]['group_id']>0)
     	{
     		if(!users::has_comments_access('view',users::get_comments_access_schema($entity_id,$app_users_cache[$user_id]['group_id']),false)) continue;
@@ -722,6 +784,11 @@ function i18n_js()
   $list['TEXT_ARE_YOU_SURE'] = TEXT_ARE_YOU_SURE;
   $list['TEXT_SELECT_AN_OPTION'] = TEXT_SELECT_AN_OPTION;
   $list['TEXT_SELECT_SOME_OPTIONS'] = TEXT_SELECT_SOME_OPTIONS;
+  $list['TEXT_FILE_TOO_LARGE'] = TEXT_FILE_TOO_LARGE;
+  $list['TEXT_MAXIMUM_UPLOAD_LIMIT'] = TEXT_MAXIMUM_UPLOAD_LIMIT;
+  $list['TEXT_COMPLETED'] = TEXT_COMPLETED;
+  $list['TEXT_CANCELLED'] = TEXT_CANCELLED;
+
   
   $html = '
     <script>
@@ -978,6 +1045,66 @@ function app_get_hours_choices()
 	}
 	
 	return $choices;
+}
+
+function app_validate_email($email) 
+{
+	$email = trim($email);
+
+	if ( strlen($email) > 255 ) 
+	{
+		$valid_address = false;
+	}  
+	else 
+	{
+		if ( substr_count( $email, '@' ) > 1 ) 
+		{
+			$valid_address = false;
+		}
+
+		if ( preg_match("/[a-z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+\/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/i", $email) ) 
+		{
+			$valid_address = true;
+		} 
+		else 
+		{
+			$valid_address = false;
+		}
+	}
+	
+	return $valid_address;
+}
+
+function app_check_form_token($redirect_to = '')
+{
+	global $app_session_token, $alerts;
+	
+	if($_POST['form_session_token']!=$app_session_token)
+	{
+		if(strlen($redirect_to))
+		{
+			$alerts->add(TEXT_FROM_SESSION_ERROR,'error');
+			redirect_to($redirect_to);
+		}
+		else
+		{
+			die(TEXT_FROM_SESSION_ERROR);
+		}
+	}
+	else
+	{
+		return true;
+	}
+}
+
+function is_ext_installed()
+{
+	return defined('CFG_PLUGIN_EXT_INSTALLED');
+}
+
+function is_cron()
+{
+	return defined('IS_CRON');
 }
 
 

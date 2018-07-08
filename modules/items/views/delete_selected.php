@@ -2,6 +2,8 @@
 
 <?php echo form_tag('form-copy-to', url_for('items/delete_selected','action=delete_selected&reports_id=' . $_GET['reports_id'] . '&path=' . $_GET['path'])) ?>
 
+<?php echo input_hidden_tag('redirect_to',$app_redirect_to) ?>
+
 <?php
 if(!isset($app_selected_items[$_GET['reports_id']])) $app_selected_items[$_GET['reports_id']] = array();
 

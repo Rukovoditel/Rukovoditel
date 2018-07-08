@@ -12,7 +12,8 @@ class fieldtype_image
   function get_configuration()
   {
     $cfg = array();
-    $cfg[] = array('title'=>TEXT_PREVIEW_IMAGE_SIZE, 'name'=>'width','type'=>'input','tooltip'=>TEXT_PREVIEW_IMAGE_SIZE_TIP,'params'=>array('class'=>'form-control input-small'));
+    $cfg[] = array('title'=>TEXT_PREVIEW_IMAGE_SIZE, 'name'=>'width','type'=>'input','tooltip_icon'=>TEXT_PREVIEW_IMAGE_SIZE_TIP,'params'=>array('class'=>'form-control input-small'));
+    $cfg[] = array('title'=>TEXT_PREVIEW_IMAGE_SIZE_IN_LISTING, 'name'=>'width_in_listing','type'=>'input','params'=>array('class'=>'form-control input-small'));
         
     return $cfg;
   }  
@@ -30,7 +31,7 @@ class fieldtype_image
       ';
     }
         
-   return input_file_tag('fields[' . $field['id'] . ']',array('class'=>'btn btn-default fieldtype_image'. ($field['is_required']==1 ? ' required':''))) . $html;   
+   return input_file_tag('fields[' . $field['id'] . ']',array('class'=>'btn btn-default fieldtype_image'. (($field['is_required']==1 and !strlen($filename)) ? ' required':''))) . $html;   
    
   }
   
@@ -92,19 +93,21 @@ class fieldtype_image
       else
       {  
         if($file['is_image'])
-        {    
-          $cfg = fields_types::parse_configuration($options['field']['configuration']);
+        {              
+          $cfg = new fields_types_cfg($options['field']['configuration']);
                      
           $fancybox_css_class = 'fancybox' . time();
                    
           $img = '<img class="fieldtype_image field_' . $options['field']['id'] . '"   src="' . url_for('items/info&path=' . $options['path']  ,'&action=download_attachment&preview=1&file=' . urlencode(base64_encode($options['value']))) . '">';                    
           
+          $width = (isset($options['is_listing']) ? (strlen($cfg->get('width_in_listing')) ? $cfg->get('width_in_listing'):250) : (strlen($cfg->get('width')) ? $cfg->get('width') : 250));
+          
           $html = '
-          <div class="fieldtype-image-container" style="max-width: ' . (strlen($cfg['width']) ? (int)$cfg['width']:'250'). 'px">' . 
+          <div class="fieldtype-image-container" style="width: ' . $width . 'px">' . 
             link_to($img,url_for('items/info&path=' . $options['path'] ,'&action=preview_attachment_image&file=' . urlencode(base64_encode($options['value']))),array('class'=>$fancybox_css_class)) .  
-            '<div class="fieldtype-image-filename" style="max-width: ' . (strlen($cfg['width']) ? (int)$cfg['width']:'250'). 'px">
+            (!isset($options['is_listing']) ? '<div class="fieldtype-image-filename" style="width: ' . $width . 'px">
               ' . link_to('<i class="fa fa-download"></i> ' . $file['name'],url_for('items/info','path=' . $options['path'] . '&action=download_attachment&file=' . urlencode(base64_encode($options['value'])))) . '            
-            </div>
+            </div>' : '') . '
            </div> 
           '; 
           

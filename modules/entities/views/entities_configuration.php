@@ -2,19 +2,14 @@
 
 <?php $default_selector = array('1'=>TEXT_YES,'0'=>TEXT_NO); ?>
 
-
-
-
 <?php echo form_tag('cfg', url_for('entities/entities_configuration','action=save&entities_id=' . $_GET['entities_id']),array('class'=>'form-horizontal')) ?>
-
-
 
 <div class="tabbable tabbable-custom">
 
 <ul class="nav nav-tabs">
   <li class="active"><a href="#general_info"  data-toggle="tab"><?php echo TEXT_TITLES ?></a></li>
   <li><a href="#comments_configuration"  data-toggle="tab"><?php echo TEXT_COMMENTS_TITLE ?></a></li>   
-  <li><a href="#redirects_configuration"  data-toggle="tab"><?php echo TEXT_REDIRRECTS ?></a></li>
+  <li><a href="#redirects_configuration"  data-toggle="tab"><?php echo TEXT_REDIRRECTS ?></a></li> 
 </ul>
 
 <div class="tab-content">

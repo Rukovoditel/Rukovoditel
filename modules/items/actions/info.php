@@ -4,7 +4,6 @@ $entity_info = db_find('app_entities',$current_entity_id);
 $entity_cfg = new entities_cfg($current_entity_id);
 $item_info = db_find('app_entity_' . $current_entity_id,$current_item_id);
 
-
 if($app_redirect_to=='subentity' and $entity_cfg->get('redirect_after_click_heading','subentity')=='subentity')
 {
   if($app_user['group_id']==0)
@@ -71,6 +70,37 @@ switch($app_module_action)
       exit();
       
     break;
+    
+  case 'preview_user_photo':
+  		$file = attachments::parse_filename(base64_decode($_GET['file']));
+  		
+  		if(is_file(DIR_WS_USERS . $file['file_sha1']))
+  		{
+  			$size = getimagesize(DIR_WS_USERS . $file['file_sha1']);
+  			echo '<img width="' . $size[0] . '" height="' . $size[1] . '" src="' . DIR_WS_USERS . $file['file_sha1'] . '">';
+  		}
+  		exit();
+  	break;
+  case 'download_user_photo':
+  	$file = attachments::parse_filename(base64_decode($_GET['file']));
+    		  	
+  	if(is_file(DIR_WS_USERS . $file['file_sha1']))
+  	{  		
+	  	header('Content-Description: File Transfer');
+	  	header('Content-Type: application/octet-stream');
+	  	header('Content-Disposition: attachment; filename='.$file['name']);
+	  	header('Content-Transfer-Encoding: binary');
+	  	header('Expires: 0');
+	  	header('Cache-Control: must-revalidate');
+	  	header('Pragma: public');
+	  	ob_clean();
+	  	flush();
+	  		  	
+	  	readfile(DIR_WS_USERS . $file['file_sha1']);
+  	}
+  	
+  	exit();
+  	break;
   case 'preview_attachment_image':
       $file = attachments::parse_filename(base64_decode($_GET['file']));
                                                                                                                                       
@@ -84,7 +114,13 @@ switch($app_module_action)
     break;
   case 'download_attachment':
       $file = attachments::parse_filename(base64_decode($_GET['file']));
-                                                                                                                                          
+      
+      //check if using file storage for feild
+      if(class_exists('file_storage') and isset($_GET['field']))
+      {      	
+      	file_storage::download_file(_get::int('field'), base64_decode($_GET['file']));      	
+      }
+                       
       if(is_file($file['file_path']))
       {
         if($file['is_image'] and isset($_GET['preview']))
@@ -124,7 +160,7 @@ switch($app_module_action)
       }
       else
       {
-        echo 'File is not found!';
+        echo TEXT_FILE_NOT_FOUD;
       }
         
       exit();
@@ -136,6 +172,12 @@ switch($app_module_action)
       //check if attachments exist
       if(strlen($attachments = $item_info['field_' . $_GET['id']])>0)
       {
+      	//check if using file storage for feild
+      	if(class_exists('file_storage'))
+      	{
+      		file_storage::download_files(_get::int('id'), $attachments);
+      	}
+      	
         $zip = new ZipArchive();
         $zip_filename = "attachments-{$current_item_id}.zip";
         $zip_filepath = DIR_FS_UPLOADS . $zip_filename;                

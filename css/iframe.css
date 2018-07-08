@@ -1,0 +1,23 @@
+.login{
+	background:none;
+	background-color: transparent !important;
+}
+
+.login-fade-in{
+	background-color: transparent;
+}
+
+.login-page-logo{
+	display: none;	
+}
+
+.copyright{
+	display: none;	
+}
+
+.login .content{
+	padding: 10px; 
+    padding-top: 0px; 
+    padding-bottom: 0px;
+    box-shadow: none; 	
+}
