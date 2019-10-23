@@ -47,7 +47,7 @@
 		"grunt-contrib-uglify": "^0.6.0",
 		"mocha": "^2.2.5",
 		"mocha-phantomjs": "^3.5.4",
-		"open": "0.0.5",
+		"open": "7.0.0",
 		"phantomjs": "1.9.1 - 1.9.7-15",
 		"serve-static": "^1.7.1"
 	},
